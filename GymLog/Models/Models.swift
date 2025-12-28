@@ -115,11 +115,6 @@ final class Exercise {
     var duration: TimeInterval  // For cardio exercises (in seconds)
     var isCompleted: Bool  // For cardio exercises to track completion
     var workout: Workout?
-    
-    // Sync tracking (for cardio exercises that don't have sets)
-    var needsSync: Bool
-    var lastSyncedAt: Date?
-    var performedAt: Date
 
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSet.exercise)
     var sets: [ExerciseSet]
@@ -134,10 +129,7 @@ final class Exercise {
         previousBest: String? = nil,
         suggestionNote: String? = nil,
         duration: TimeInterval = 0,
-        isCompleted: Bool = false,
-        needsSync: Bool = true,
-        lastSyncedAt: Date? = nil,
-        performedAt: Date = Date()
+        isCompleted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -149,9 +141,6 @@ final class Exercise {
         self.suggestionNote = suggestionNote
         self.duration = duration
         self.isCompleted = isCompleted
-        self.needsSync = needsSync
-        self.lastSyncedAt = lastSyncedAt
-        self.performedAt = performedAt
         self.sets = []
     }
     
@@ -160,6 +149,10 @@ final class Exercise {
     }
     
     var sortedSets: [ExerciseSet] {
+        sets.sorted { $0.order < $1.order }
+    }
+    
+    var activeSets: [ExerciseSet] {
         sets.sorted { $0.order < $1.order }
     }
     
@@ -185,11 +178,6 @@ final class ExerciseSet {
     var workTime: TimeInterval  // Actual time spent doing the set (in seconds)
     var workStartTime: Date?    // When the set timer started (for persistence)
     var exercise: Exercise?
-    
-    // Sync tracking
-    var needsSync: Bool  // True if changes need to be synced to server
-    var lastSyncedAt: Date?  // When this record was last synced
-    var performedAt: Date  // When the set was actually performed
 
     init(
         id: UUID = UUID(),
@@ -200,10 +188,7 @@ final class ExerciseSet {
         previousWeight: Double? = nil,
         previousReps: Int? = nil,
         workTime: TimeInterval = 0,
-        workStartTime: Date? = nil,
-        needsSync: Bool = true,
-        lastSyncedAt: Date? = nil,
-        performedAt: Date = Date()
+        workStartTime: Date? = nil
     ) {
         self.id = id
         self.reps = reps
@@ -214,9 +199,6 @@ final class ExerciseSet {
         self.previousReps = previousReps
         self.workTime = workTime
         self.workStartTime = workStartTime
-        self.needsSync = needsSync
-        self.lastSyncedAt = lastSyncedAt
-        self.performedAt = performedAt
     }
     
     var volume: Double {
