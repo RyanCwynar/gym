@@ -18,17 +18,11 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            ExerciseLibraryView()
-                .tabItem {
-                    Label("Exercises", systemImage: "dumbbell.fill")
-                }
-                .tag(2)
-            
             StatsView()
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
-                .tag(3)
+                .tag(2)
         }
         .tint(GymTheme.primary)
     }

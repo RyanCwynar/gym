@@ -23,8 +23,12 @@ struct HistoryView: View {
         }
     }
     
+    // Filter workouts that have exercises (exclude today - today is shown on Home)
     var filteredWorkouts: [Workout] {
-        var filtered = workouts.filter { $0.isCompleted }
+        let calendar = Calendar.current
+        var filtered = workouts.filter { 
+            !$0.exercises.isEmpty && !calendar.isDateInToday($0.date)
+        }
         
         // Apply search
         if !searchText.isEmpty {
@@ -39,25 +43,23 @@ struct HistoryView: View {
         case .all:
             break
         case .thisWeek:
-            let startOfWeek = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+            let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
             filtered = filtered.filter { $0.date >= startOfWeek }
         case .thisMonth:
-            let startOfMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
+            let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
             filtered = filtered.filter { $0.date >= startOfMonth }
         }
         
         return filtered
     }
     
-    var groupedWorkouts: [(String, [Workout])] {
+    var groupedByDay: [(String, [Workout])] {
         let calendar = Calendar.current
         var groups: [String: [Workout]] = [:]
         
         for workout in filteredWorkouts {
             let key: String
-            if calendar.isDateInToday(workout.date) {
-                key = "Today"
-            } else if calendar.isDateInYesterday(workout.date) {
+            if calendar.isDateInYesterday(workout.date) {
                 key = "Yesterday"
             } else if calendar.isDate(workout.date, equalTo: Date(), toGranularity: .weekOfYear) {
                 key = "This Week"
@@ -73,7 +75,7 @@ struct HistoryView: View {
         }
         
         // Sort groups by most recent first
-        let order = ["Today", "Yesterday", "This Week", "This Month"]
+        let order = ["Yesterday", "This Week", "This Month"]
         return groups.sorted { first, second in
             let firstIndex = order.firstIndex(of: first.key) ?? Int.max
             let secondIndex = order.firstIndex(of: second.key) ?? Int.max
@@ -82,7 +84,6 @@ struct HistoryView: View {
                 return firstIndex < secondIndex
             }
             
-            // For month/year strings, sort by date
             return first.value.first?.date ?? Date() > second.value.first?.date ?? Date()
         }
     }
@@ -101,7 +102,7 @@ struct HistoryView: View {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.gymTextSecondary)
                             
-                            TextField("Search workouts", text: $searchText)
+                            TextField("Search exercises", text: $searchText)
                                 .foregroundColor(.gymText)
                             
                             if !searchText.isEmpty {
@@ -150,9 +151,9 @@ struct HistoryView: View {
                         Spacer()
                         EmptyStateView(
                             icon: "clock.fill",
-                            title: searchText.isEmpty ? "No workouts yet" : "No results",
+                            title: searchText.isEmpty ? "No activity yet" : "No results",
                             message: searchText.isEmpty 
-                                ? "Complete your first workout to see it here"
+                                ? "Log your first exercise to see it here"
                                 : "Try adjusting your search or filters"
                         )
                         Spacer()
@@ -160,13 +161,13 @@ struct HistoryView: View {
                         // Stats Summary
                         statsSummary
                         
-                        // Workout List
+                        // Activity List by Day
                         ScrollView {
                             LazyVStack(spacing: GymTheme.Spacing.lg, pinnedViews: [.sectionHeaders]) {
-                                ForEach(groupedWorkouts, id: \.0) { group, workouts in
+                                ForEach(groupedByDay, id: \.0) { group, days in
                                     Section {
-                                        ForEach(workouts) { workout in
-                                            WorkoutCard(workout: workout) {
+                                        ForEach(days) { workout in
+                                            DayActivityCard(workout: workout) {
                                                 selectedWorkout = workout
                                             }
                                         }
@@ -176,7 +177,7 @@ struct HistoryView: View {
                                                 .font(GymTheme.Typography.subheadline)
                                                 .foregroundColor(.gymTextSecondary)
                                             Spacer()
-                                            Text("\(workouts.count) workout\(workouts.count == 1 ? "" : "s")")
+                                            Text("\(days.count) day\(days.count == 1 ? "" : "s")")
                                                 .font(GymTheme.Typography.caption)
                                                 .foregroundColor(.gymTextSecondary.opacity(0.7))
                                         }
@@ -192,10 +193,10 @@ struct HistoryView: View {
                     }
                 }
             }
-            .navigationTitle("History")
+            .navigationTitle("Activity")
             .navigationBarTitleDisplayMode(.large)
             .sheet(item: $selectedWorkout) { workout in
-                WorkoutDetailView(workout: workout)
+                DayDetailView(workout: workout)
             }
         }
     }
@@ -206,13 +207,13 @@ struct HistoryView: View {
             HStack(spacing: GymTheme.Spacing.sm) {
                 MiniStatCard(
                     value: "\(filteredWorkouts.count)",
-                    label: "Workouts",
+                    label: "Days",
                     color: .gymPrimary
                 )
                 
                 MiniStatCard(
-                    value: formatTotalTime,
-                    label: "Total Time",
+                    value: formatTotalWorkTime,
+                    label: "Work Time",
                     color: .gymSecondary
                 )
                 
@@ -223,8 +224,8 @@ struct HistoryView: View {
                 )
                 
                 MiniStatCard(
-                    value: "\(totalSets)",
-                    label: "Sets",
+                    value: "\(totalExercises)",
+                    label: "Exercises",
                     color: .gymSuccess
                 )
             }
@@ -233,8 +234,8 @@ struct HistoryView: View {
         }
     }
     
-    private var formatTotalTime: String {
-        let totalSeconds = filteredWorkouts.reduce(0) { $0 + $1.duration }
+    private var formatTotalWorkTime: String {
+        let totalSeconds = filteredWorkouts.reduce(0) { $0 + $1.savedWorkTime }
         let hours = Int(totalSeconds) / 3600
         if hours > 0 {
             return "\(hours)h"
@@ -253,8 +254,8 @@ struct HistoryView: View {
         return String(format: "%.0f", total)
     }
     
-    private var totalSets: Int {
-        filteredWorkouts.reduce(0) { $0 + $1.totalSets }
+    private var totalExercises: Int {
+        filteredWorkouts.reduce(0) { $0 + $1.exercises.count }
     }
 }
 
@@ -285,4 +286,3 @@ struct MiniStatCard: View {
     HistoryView()
         .modelContainer(for: [Workout.self, Exercise.self, ExerciseSet.self], inMemory: true)
 }
-

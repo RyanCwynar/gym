@@ -46,6 +46,11 @@ final class Workout {
     }
     
     var elapsedTime: TimeInterval {
+        // If workout is completed, return the saved duration
+        if isCompleted {
+            return duration
+        }
+        // Otherwise calculate from start date
         let elapsed = Date().timeIntervalSince(startDate)
         // Cap at 2 hours (7200 seconds)
         return min(elapsed, 7200)
@@ -77,6 +82,12 @@ final class Workout {
         exercises.reduce(0) { $0 + $1.sets.count }
     }
     
+    var totalReps: Int {
+        exercises.reduce(0) { total, exercise in
+            total + exercise.sets.reduce(0) { $0 + $1.reps }
+        }
+    }
+    
     var formattedDuration: String {
         let hours = Int(duration) / 3600
         let minutes = Int(duration) / 60 % 60
@@ -102,6 +113,7 @@ final class Exercise {
     var previousBest: String?
     var suggestionNote: String?
     var duration: TimeInterval  // For cardio exercises (in seconds)
+    var isCompleted: Bool  // For cardio exercises to track completion
     var workout: Workout?
 
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSet.exercise)
@@ -116,7 +128,8 @@ final class Exercise {
         targetReps: Int? = nil,
         previousBest: String? = nil,
         suggestionNote: String? = nil,
-        duration: TimeInterval = 0
+        duration: TimeInterval = 0,
+        isCompleted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -127,6 +140,7 @@ final class Exercise {
         self.previousBest = previousBest
         self.suggestionNote = suggestionNote
         self.duration = duration
+        self.isCompleted = isCompleted
         self.sets = []
     }
     

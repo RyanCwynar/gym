@@ -4,17 +4,18 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
-    @State private var activeWorkout: Workout?
     
-    // Get the current in-progress workout if any
-    private var inProgressWorkout: Workout? {
-        workouts.first(where: { !$0.isCompleted })
+    @State private var showingExercisePicker = false
+    
+    // Get or create today's workout
+    private var todaysWorkout: Workout? {
+        let calendar = Calendar.current
+        return workouts.first { calendar.isDateInToday($0.date) }
     }
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
                 Color.gymBackground
                     .ignoresSafeArea()
                 
@@ -23,27 +24,28 @@ struct HomeView: View {
                         // Header
                         headerSection
                         
-                        // Quick Stats
-                        quickStatsSection
-                        
-                        // Active Workout Banner (if exists)
-                        if let active = inProgressWorkout {
-                            activeWorkoutBanner(active)
+                        // Today's Work Time Summary (if any activity)
+                        if let today = todaysWorkout, !today.exercises.isEmpty {
+                            workTimeSummary(today)
                         }
-
-                        // Quick Start Section
-                        quickStartSection
                         
-                        // Recent Workouts
-                        recentWorkoutsSection
+                        // Add Exercise Button
+                        addExerciseButton
+                        
+                        // Today's Exercises (shown directly with sets)
+                        if let today = todaysWorkout, !today.exercises.isEmpty {
+                            todaysExercisesSection(today)
+                        }
                     }
                     .padding(.horizontal, GymTheme.Spacing.md)
                     .padding(.bottom, 100)
                 }
             }
             .navigationBarHidden(true)
-            .sheet(item: $activeWorkout) { workout in
-                WorkoutView(workout: workout)
+            .sheet(isPresented: $showingExercisePicker) {
+                ExercisePickerSheet { exerciseName, muscleGroup in
+                    addExerciseToToday(name: exerciseName, muscleGroup: muscleGroup)
+                }
             }
         }
     }
@@ -52,190 +54,234 @@ struct HomeView: View {
     private var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(greeting)
+                Text(Date().formatted(date: .complete, time: .omitted))
                     .font(GymTheme.Typography.subheadline)
                     .foregroundColor(.gymTextSecondary)
                 
-                Text("Let's crush it! 💪")
+                Text(greeting)
                     .font(GymTheme.Typography.largeTitle)
                     .foregroundColor(.gymText)
             }
             
             Spacer()
-            
-            // Streak indicator
-            VStack(spacing: 2) {
-                Text("🔥")
-                    .font(.system(size: 24))
-                Text("\(currentStreak)")
-                    .font(GymTheme.Typography.headline)
-                    .foregroundColor(.gymPrimary)
-            }
-            .padding(12)
-            .background(Color.gymSurfaceElevated)
-            .clipShape(Circle())
         }
         .padding(.top, GymTheme.Spacing.lg)
     }
     
-    // MARK: - Quick Stats Section
-    private var quickStatsSection: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: GymTheme.Spacing.sm) {
-            StatCard(
-                title: "This Week",
-                value: "\(workoutsThisWeek)",
-                icon: "calendar",
-                color: .gymPrimary
-            )
+    // MARK: - Work Time Summary
+    private func workTimeSummary(_ workout: Workout) -> some View {
+        TimelineView(.animation(minimumInterval: 1.0, paused: !hasRunningTimer(workout))) { timeline in
+            let totalTime = calculateTotalWorkTime(workout, at: timeline.date)
             
-            StatCard(
-                title: "Total Volume",
-                value: formattedTotalVolume,
-                icon: "scalemass.fill",
-                color: .gymSecondary
-            )
-            
-            StatCard(
-                title: "Total Workouts",
-                value: "\(workouts.filter { $0.isCompleted }.count)",
-                icon: "figure.strengthtraining.traditional",
-                color: .gymAccent
-            )
-            
-            StatCard(
-                title: "This Month",
-                value: "\(workoutsThisMonth)",
-                icon: "chart.bar.fill",
-                color: .gymSuccess
-            )
-        }
-    }
-    
-    // MARK: - Active Workout Banner
-    private func activeWorkoutBanner(_ workout: Workout) -> some View {
-        Button {
-            activeWorkout = workout
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+            HStack(spacing: GymTheme.Spacing.lg) {
+                // Work time
+                HStack(spacing: GymTheme.Spacing.sm) {
+                    ZStack {
                         Circle()
-                            .fill(Color.gymSuccess)
-                            .frame(width: 8, height: 8)
-                        Text("WORKOUT IN PROGRESS")
-                            .font(GymTheme.Typography.caption)
-                            .foregroundColor(.gymSuccess)
+                            .fill(hasRunningTimer(workout) ? Color.gymPrimary : Color.gymSuccess.opacity(0.2))
+                            .frame(width: 40, height: 40)
+                        
+                        Image(systemName: "timer")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(hasRunningTimer(workout) ? .white : .gymSuccess)
                     }
                     
-                    Text(workout.name)
-                        .font(GymTheme.Typography.headline)
-                        .foregroundColor(.gymText)
-                    
-                    Text("\(workout.exercises.count) exercises • \(workout.totalSets) sets")
-                        .font(GymTheme.Typography.caption)
-                        .foregroundColor(.gymTextSecondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Total Work Time")
+                            .font(GymTheme.Typography.caption)
+                            .foregroundColor(.gymTextSecondary)
+                        
+                        Text(formatTotalTime(totalTime))
+                            .font(.system(size: 22, weight: .bold, design: .monospaced))
+                            .foregroundColor(hasRunningTimer(workout) ? .gymPrimary : .gymText)
+                    }
                 }
                 
                 Spacer()
                 
-                Image(systemName: "arrow.right.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.gymPrimary)
+                // Sets completed
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Completed")
+                        .font(GymTheme.Typography.caption)
+                        .foregroundColor(.gymTextSecondary)
+                    
+                    Text("\(completedSets(workout))/\(workout.totalSets)")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.gymSuccess)
+                }
             }
             .padding(GymTheme.Spacing.md)
+            .background(Color.gymSurfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
+        }
+    }
+    
+    private func hasRunningTimer(_ workout: Workout) -> Bool {
+        for exercise in workout.exercises {
+            for set in exercise.sets {
+                if set.workStartTime != nil {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+    
+    private func calculateTotalWorkTime(_ workout: Workout, at date: Date) -> TimeInterval {
+        var total: TimeInterval = 0
+        for exercise in workout.exercises {
+            // Add cardio exercise duration
+            if exercise.muscleGroup == "Cardio" {
+                total += exercise.duration
+            }
+            // Add set work times
+            for set in exercise.sets {
+                total += set.workTime
+                if let startTime = set.workStartTime {
+                    total += date.timeIntervalSince(startTime)
+                }
+            }
+        }
+        return total
+    }
+    
+    private func completedSets(_ workout: Workout) -> Int {
+        var count = 0
+        for exercise in workout.exercises {
+            for set in exercise.sets {
+                if set.isCompleted {
+                    count += 1
+                }
+            }
+        }
+        return count
+    }
+    
+    private func formatTotalTime(_ time: TimeInterval) -> String {
+        let hours = Int(time) / 3600
+        let minutes = Int(time) / 60 % 60
+        let seconds = Int(time) % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    // MARK: - Add Exercise Button
+    private var addExerciseButton: some View {
+        Button {
+            showingExercisePicker = true
+        } label: {
+            HStack {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 24))
+                
+                Text("Add Exercise")
+                    .font(GymTheme.Typography.headline)
+                
+                Spacer()
+            }
+            .foregroundColor(.white)
+            .padding(GymTheme.Spacing.lg)
             .background(
-                RoundedRectangle(cornerRadius: GymTheme.Radius.large)
-                    .fill(Color.gymSurfaceElevated)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: GymTheme.Radius.large)
-                            .stroke(Color.gymSuccess.opacity(0.5), lineWidth: 1)
-                    )
+                LinearGradient(
+                    colors: [Color(hex: "FF6B35"), Color(hex: "FF8C5A")],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
             )
+            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
         }
         .buttonStyle(.plain)
     }
     
-    // MARK: - Quick Start Section
-    private var quickStartSection: some View {
-        VStack(spacing: GymTheme.Spacing.md) {
-            SectionHeader(title: "Quick Start")
-            
-            Button {
-                startOrResumeWorkout()
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(inProgressWorkout != nil ? "Continue Workout" : "Start New Workout")
-                            .font(GymTheme.Typography.headline)
-                            .foregroundColor(.gymText)
-                        
-                        Text(inProgressWorkout != nil ? "Resume your current session" : "Begin a new workout from scratch")
-                            .font(GymTheme.Typography.caption)
-                            .foregroundColor(.gymTextSecondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: inProgressWorkout != nil ? "play.circle.fill" : "plus.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color(hex: "FF6B35"), Color(hex: "FF8C5A")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+    // MARK: - Today's Exercises Section
+    private func todaysExercisesSection(_ workout: Workout) -> some View {
+        VStack(alignment: .leading, spacing: GymTheme.Spacing.md) {
+            // Summary stats
+            HStack(spacing: GymTheme.Spacing.lg) {
+                HStack(spacing: 6) {
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymSecondary)
+                    Text("\(workout.exercises.count) exercises")
+                        .font(GymTheme.Typography.subheadline)
+                        .foregroundColor(.gymText)
                 }
-                .padding(GymTheme.Spacing.lg)
-                .background(
-                    LinearGradient(
-                        colors: [Color(hex: "1F1F32"), Color(hex: "2D2D44")],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymAccent)
+                    Text("\(workout.totalSets) sets")
+                        .font(GymTheme.Typography.subheadline)
+                        .foregroundColor(.gymText)
+                }
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "repeat")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymSuccess)
+                    Text("\(workout.totalReps) reps")
+                        .font(GymTheme.Typography.subheadline)
+                        .foregroundColor(.gymText)
+                }
+                
+                Spacer()
             }
-            .buttonStyle(.plain)
+            .padding(GymTheme.Spacing.md)
+            .background(Color.gymSurfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+            
+            // Exercise cards with inline sets
+            ForEach(workout.exercises.sorted { $0.order < $1.order }) { exercise in
+                InlineExerciseCard(exercise: exercise, onDelete: {
+                    deleteExercise(exercise, from: workout)
+                })
+            }
         }
     }
     
-    private func startOrResumeWorkout() {
-        if let existing = inProgressWorkout {
-            // Resume existing workout
-            activeWorkout = existing
+    private func deleteExercise(_ exercise: Exercise, from workout: Workout) {
+        workout.exercises.removeAll { $0.id == exercise.id }
+        modelContext.delete(exercise)
+    }
+    
+    // MARK: - Add Exercise to Today
+    private func addExerciseToToday(name: String, muscleGroup: String) {
+        let workout: Workout
+        
+        if let existing = todaysWorkout {
+            workout = existing
         } else {
-            // Create and open new workout
-            let workout = Workout(name: "Workout")
-            modelContext.insert(workout)
-            activeWorkout = workout
-        }
-    }
-    
-    // MARK: - Recent Workouts Section
-    private var recentWorkoutsSection: some View {
-        VStack(spacing: GymTheme.Spacing.md) {
-            SectionHeader(title: "Recent Workouts", actionTitle: "See All") {
-                // Navigate to history
-            }
+            // Create today's workout
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "EEEE, MMM d"
+            let dayName = dateFormatter.string(from: Date())
             
-            if workouts.isEmpty {
-                EmptyStateView(
-                    icon: "dumbbell.fill",
-                    title: "No workouts yet",
-                    message: "Start your fitness journey by logging your first workout!"
-                )
-            } else {
-                ForEach(workouts.prefix(5)) { workout in
-                    WorkoutCard(workout: workout) {
-                        activeWorkout = workout
-                    }
-                }
-            }
+            workout = Workout(name: dayName)
+            modelContext.insert(workout)
         }
+        
+        // Add the exercise
+        let exercise = Exercise(
+            name: name,
+            muscleGroup: muscleGroup,
+            order: workout.exercises.count
+        )
+        
+        // Only add a default set for non-cardio exercises
+        if muscleGroup != "Cardio" {
+            let set = ExerciseSet(reps: 8, weight: 0, order: 0)
+            exercise.sets.append(set)
+            set.exercise = exercise
+        }
+        
+        workout.exercises.append(exercise)
+        exercise.workout = workout
+        
+        // No modal - exercise appears inline on dashboard
     }
     
     // MARK: - Helpers
@@ -248,60 +294,9 @@ struct HomeView: View {
         default: return "Late night gains"
         }
     }
-    
-    private var currentStreak: Int {
-        // Calculate workout streak
-        var streak = 0
-        var currentDate = Calendar.current.startOfDay(for: Date())
-        
-        while true {
-            let hasWorkout = workouts.contains { workout in
-                Calendar.current.isDate(workout.date, inSameDayAs: currentDate) && workout.isCompleted
-            }
-            
-            if hasWorkout {
-                streak += 1
-                currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
-            } else if streak == 0 {
-                // Check yesterday if no workout today
-                currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
-                let hadYesterday = workouts.contains { workout in
-                    Calendar.current.isDate(workout.date, inSameDayAs: currentDate) && workout.isCompleted
-                }
-                if !hadYesterday {
-                    break
-                }
-            } else {
-                break
-            }
-        }
-        
-        return streak
-    }
-    
-    private var workoutsThisWeek: Int {
-        let startOfWeek = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
-        return workouts.filter { $0.date >= startOfWeek && $0.isCompleted }.count
-    }
-    
-    private var workoutsThisMonth: Int {
-        let startOfMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
-        return workouts.filter { $0.date >= startOfMonth && $0.isCompleted }.count
-    }
-    
-    private var formattedTotalVolume: String {
-        let totalVolume = workouts.filter { $0.isCompleted }.reduce(0) { $0 + $1.totalVolume }
-        if totalVolume >= 1000000 {
-            return String(format: "%.1fM", totalVolume / 1000000)
-        } else if totalVolume >= 1000 {
-            return String(format: "%.1fK", totalVolume / 1000)
-        }
-        return String(format: "%.0f", totalVolume)
-    }
 }
 
 #Preview {
     HomeView()
         .modelContainer(for: [Workout.self, Exercise.self, ExerciseSet.self], inMemory: true)
 }
-
