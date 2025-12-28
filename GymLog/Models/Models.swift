@@ -113,6 +113,7 @@ final class Exercise {
     var previousBest: String?
     var suggestionNote: String?
     var duration: TimeInterval  // For cardio exercises (in seconds)
+    var isCompleted: Bool  // For cardio exercises to track completion
     var workout: Workout?
 
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSet.exercise)
@@ -127,7 +128,8 @@ final class Exercise {
         targetReps: Int? = nil,
         previousBest: String? = nil,
         suggestionNote: String? = nil,
-        duration: TimeInterval = 0
+        duration: TimeInterval = 0,
+        isCompleted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -138,6 +140,7 @@ final class Exercise {
         self.previousBest = previousBest
         self.suggestionNote = suggestionNote
         self.duration = duration
+        self.isCompleted = isCompleted
         self.sets = []
     }
     

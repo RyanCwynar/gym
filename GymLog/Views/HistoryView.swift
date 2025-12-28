@@ -23,9 +23,12 @@ struct HistoryView: View {
         }
     }
     
-    // Filter workouts that have exercises
+    // Filter workouts that have exercises (exclude today - today is shown on Home)
     var filteredWorkouts: [Workout] {
-        var filtered = workouts.filter { !$0.exercises.isEmpty }
+        let calendar = Calendar.current
+        var filtered = workouts.filter { 
+            !$0.exercises.isEmpty && !calendar.isDateInToday($0.date)
+        }
         
         // Apply search
         if !searchText.isEmpty {
@@ -40,10 +43,10 @@ struct HistoryView: View {
         case .all:
             break
         case .thisWeek:
-            let startOfWeek = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+            let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
             filtered = filtered.filter { $0.date >= startOfWeek }
         case .thisMonth:
-            let startOfMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
+            let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
             filtered = filtered.filter { $0.date >= startOfMonth }
         }
         
@@ -56,9 +59,7 @@ struct HistoryView: View {
         
         for workout in filteredWorkouts {
             let key: String
-            if calendar.isDateInToday(workout.date) {
-                key = "Today"
-            } else if calendar.isDateInYesterday(workout.date) {
+            if calendar.isDateInYesterday(workout.date) {
                 key = "Yesterday"
             } else if calendar.isDate(workout.date, equalTo: Date(), toGranularity: .weekOfYear) {
                 key = "This Week"
@@ -74,7 +75,7 @@ struct HistoryView: View {
         }
         
         // Sort groups by most recent first
-        let order = ["Today", "Yesterday", "This Week", "This Month"]
+        let order = ["Yesterday", "This Week", "This Month"]
         return groups.sorted { first, second in
             let firstIndex = order.firstIndex(of: first.key) ?? Int.max
             let secondIndex = order.firstIndex(of: second.key) ?? Int.max

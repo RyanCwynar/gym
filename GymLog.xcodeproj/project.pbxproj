@@ -20,6 +20,11 @@
 		E91234560011 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550011 /* Components.swift */; };
 		E91234560012 /* ExerciseTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550012 /* ExerciseTemplates.swift */; };
 		E91234560013 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550013 /* StatsView.swift */; };
+		E91234560014 /* InlineExerciseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550014 /* InlineExerciseCard.swift */; };
+		E91234560015 /* CardioTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550015 /* CardioTimerView.swift */; };
+		E91234560016 /* InlineSetRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550016 /* InlineSetRow.swift */; };
+		E91234560017 /* ExercisePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550017 /* ExercisePickerSheet.swift */; };
+		E91234560018 /* DayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550018 /* DayDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +42,11 @@
 		E91234550011 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		E91234550012 /* ExerciseTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseTemplates.swift; sourceTree = "<group>"; };
 		E91234550013 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		E91234550014 /* InlineExerciseCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineExerciseCard.swift; sourceTree = "<group>"; };
+		E91234550015 /* CardioTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardioTimerView.swift; sourceTree = "<group>"; };
+		E91234550016 /* InlineSetRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineSetRow.swift; sourceTree = "<group>"; };
+		E91234550017 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
+		E91234550018 /* DayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +107,11 @@
 				E91234550008 /* ExerciseLibraryView.swift */,
 				E91234550009 /* WorkoutDetailView.swift */,
 				E91234550013 /* StatsView.swift */,
+				E91234550014 /* InlineExerciseCard.swift */,
+				E91234550015 /* CardioTimerView.swift */,
+				E91234550016 /* InlineSetRow.swift */,
+				E91234550017 /* ExercisePickerSheet.swift */,
+				E91234550018 /* DayDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -191,6 +206,11 @@
 				E91234560011 /* Components.swift in Sources */,
 				E91234560012 /* ExerciseTemplates.swift in Sources */,
 				E91234560013 /* StatsView.swift in Sources */,
+				E91234560014 /* InlineExerciseCard.swift in Sources */,
+				E91234560015 /* CardioTimerView.swift in Sources */,
+				E91234560016 /* InlineSetRow.swift in Sources */,
+				E91234560017 /* ExercisePickerSheet.swift in Sources */,
+				E91234560018 /* DayDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
