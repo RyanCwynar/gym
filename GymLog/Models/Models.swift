@@ -46,6 +46,11 @@ final class Workout {
     }
     
     var elapsedTime: TimeInterval {
+        // If workout is completed, return the saved duration
+        if isCompleted {
+            return duration
+        }
+        // Otherwise calculate from start date
         let elapsed = Date().timeIntervalSince(startDate)
         // Cap at 2 hours (7200 seconds)
         return min(elapsed, 7200)
@@ -75,6 +80,12 @@ final class Workout {
     
     var totalSets: Int {
         exercises.reduce(0) { $0 + $1.sets.count }
+    }
+    
+    var totalReps: Int {
+        exercises.reduce(0) { total, exercise in
+            total + exercise.sets.reduce(0) { $0 + $1.reps }
+        }
     }
     
     var formattedDuration: String {

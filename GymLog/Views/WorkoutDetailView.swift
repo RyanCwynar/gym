@@ -5,7 +5,7 @@ struct WorkoutDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    let workout: Workout
+    @Bindable var workout: Workout
     
     @State private var showingDeleteAlert = false
     @State private var showingEditSheet = false
@@ -43,7 +43,7 @@ struct WorkoutDetailView: View {
                     .padding(.bottom, GymTheme.Spacing.xxl)
                 }
             }
-            .navigationTitle("Workout Details")
+            .navigationTitle(workout.date.formatted(date: .long, time: .omitted))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -57,7 +57,7 @@ struct WorkoutDetailView: View {
                         Button {
                             repeatWorkout()
                         } label: {
-                            Label("Repeat Workout", systemImage: "arrow.clockwise")
+                            Label("Repeat Day", systemImage: "arrow.clockwise")
                         }
                         
                         Button(role: .destructive) {
@@ -162,37 +162,31 @@ struct WorkoutDetailView: View {
     
     // MARK: - Header Card
     private var headerCard: some View {
-        VStack(spacing: GymTheme.Spacing.md) {
-            // Status badge
-            HStack {
+        HStack {
+            // Active Work Time
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(workout.isCompleted ? Color.gymSuccess : Color.gymWarning)
-                        .frame(width: 8, height: 8)
-                    
-                    Text(workout.isCompleted ? "COMPLETED" : "IN PROGRESS")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(workout.isCompleted ? .gymSuccess : .gymWarning)
+                    Image(systemName: "timer")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymPrimary)
+                    Text("Active Work Time")
+                        .font(GymTheme.Typography.caption)
+                        .foregroundColor(.gymTextSecondary)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background((workout.isCompleted ? Color.gymSuccess : Color.gymWarning).opacity(0.15))
-                .clipShape(Capsule())
                 
-                Spacer()
+                Text(formatWorkTime(workout.savedWorkTime))
+                    .font(GymTheme.Typography.statValue)
+                    .foregroundColor(.gymPrimary)
+                    .monospacedDigit()
             }
             
-            // Workout name and date
-            VStack(alignment: .leading, spacing: 4) {
-                Text(workout.name)
-                    .font(GymTheme.Typography.title1)
-                    .foregroundColor(.gymText)
-                
-                Text(workout.date.formatted(date: .complete, time: .shortened))
-                    .font(GymTheme.Typography.subheadline)
-                    .foregroundColor(.gymTextSecondary)
+            Spacer()
+            
+            if workout.isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.gymSuccess)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(GymTheme.Spacing.lg)
         .background(
@@ -207,47 +201,27 @@ struct WorkoutDetailView: View {
     
     // MARK: - Stats Row
     private var statsRow: some View {
-        VStack(spacing: GymTheme.Spacing.sm) {
-            // Duration row
-            HStack(spacing: GymTheme.Spacing.sm) {
-                DetailStatCard(
-                    icon: "clock.fill",
-                    value: workout.formattedDuration,
-                    label: "Total Duration",
-                    color: .gymPrimary
-                )
-                
-                DetailStatCard(
-                    icon: "timer",
-                    value: formatWorkTime(workout.savedWorkTime),
-                    label: "Work Time",
-                    color: .gymWarning
-                )
-            }
+        HStack(spacing: GymTheme.Spacing.sm) {
+            DetailStatCard(
+                icon: "dumbbell.fill",
+                value: "\(workout.exercises.count)",
+                label: "Exercises",
+                color: .gymSecondary
+            )
             
-            // Other stats row
-            HStack(spacing: GymTheme.Spacing.sm) {
-                DetailStatCard(
-                    icon: "dumbbell.fill",
-                    value: "\(workout.exercises.count)",
-                    label: "Exercises",
-                    color: .gymSecondary
-                )
-                
-                DetailStatCard(
-                    icon: "square.stack.fill",
-                    value: "\(workout.totalSets)",
-                    label: "Sets",
-                    color: .gymAccent
-                )
-                
-                DetailStatCard(
-                    icon: "scalemass.fill",
-                    value: formatVolume(workout.totalVolume),
-                    label: "Volume",
-                    color: .gymSuccess
-                )
-            }
+            DetailStatCard(
+                icon: "square.stack.fill",
+                value: "\(workout.totalSets)",
+                label: "Sets",
+                color: .gymAccent
+            )
+            
+            DetailStatCard(
+                icon: "repeat",
+                value: "\(workout.totalReps)",
+                label: "Reps",
+                color: .gymSuccess
+            )
         }
     }
     

@@ -16,8 +16,7 @@ struct WorkoutView: View {
     @State private var showingFinishAlert = false
     @State private var showingDiscardAlert = false
     @State private var showingComparison = false
-    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @State private var elapsedTime: TimeInterval = 0
+    @State private var repeatedWorkout: Workout?
     
     var body: some View {
         NavigationStack {
@@ -57,10 +56,9 @@ struct WorkoutView: View {
                 }
                 
                 ToolbarItem(placement: .principal) {
-                    TextField("Workout Name", text: $workout.name)
+                    Text(workout.date.formatted(date: .long, time: .omitted))
                         .font(GymTheme.Typography.headline)
                         .foregroundColor(.gymText)
-                        .multilineTextAlignment(.center)
                 }
             }
             .sheet(isPresented: $showingExercisePicker) {
@@ -76,6 +74,9 @@ struct WorkoutView: View {
                         onDismiss: { dismiss() }
                     )
                 }
+            }
+            .fullScreenCover(item: $repeatedWorkout) { newWorkout in
+                WorkoutView(workout: newWorkout, originalWorkout: workout)
             }
             .alert("Finish Workout?", isPresented: $showingFinishAlert) {
                 Button("Cancel", role: .cancel) { }
@@ -94,84 +95,58 @@ struct WorkoutView: View {
             } message: {
                 Text("Are you sure you want to discard this workout? All progress will be lost.")
             }
-            .onAppear {
-                // Calculate elapsed from persisted start date
-                elapsedTime = workout.elapsedTime
-            }
-            .onReceive(timer) { _ in
-                if !workout.isCompleted {
-                    elapsedTime = workout.elapsedTime
-                }
-            }
         }
     }
     
-    // MARK: - Timer Card
+    // MARK: - Stats Card
     private var timerCard: some View {
-        VStack(spacing: GymTheme.Spacing.md) {
-            // Main duration display
         HStack {
+            // Active Work Time
             VStack(alignment: .leading, spacing: 4) {
-                    Text("Total Duration")
-                    .font(GymTheme.Typography.caption)
-                    .foregroundColor(.gymTextSecondary)
+                HStack(spacing: 6) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymPrimary)
+                    Text("Active Work Time")
+                        .font(GymTheme.Typography.caption)
+                        .foregroundColor(.gymTextSecondary)
+                }
                 
-                Text(formatDuration(elapsedTime))
+                Text(formatDuration(workout.totalWorkTime))
                     .font(GymTheme.Typography.statValue)
-                    .foregroundColor(.gymText)
+                    .foregroundColor(.gymPrimary)
                     .monospacedDigit()
-                    
-                    if elapsedTime >= 7200 {
-                        Text("(capped at 2 hours)")
-                            .font(GymTheme.Typography.caption)
-                            .foregroundColor(.gymWarning)
-                    }
             }
             
             Spacer()
             
-            VStack(alignment: .trailing, spacing: GymTheme.Spacing.xs) {
-                HStack(spacing: GymTheme.Spacing.lg) {
-                    VStack(alignment: .trailing) {
-                        Text("\(workout.exercises.count)")
-                            .font(GymTheme.Typography.title2)
-                            .foregroundColor(.gymPrimary)
-                        Text("exercises")
-                            .font(GymTheme.Typography.caption)
-                            .foregroundColor(.gymTextSecondary)
-                    }
-                    
-                    VStack(alignment: .trailing) {
-                        Text("\(workout.totalSets)")
-                            .font(GymTheme.Typography.title2)
-                            .foregroundColor(.gymSecondary)
-                        Text("sets")
-                            .font(GymTheme.Typography.caption)
-                            .foregroundColor(.gymTextSecondary)
-                    }
-                    }
-                }
-            }
-            
-            // Work time summary
-            if workout.totalWorkTime > 0 {
-                Divider()
-                    .background(Color.gymTextSecondary.opacity(0.3))
-                
-                HStack {
-                    Image(systemName: "timer")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gymPrimary)
-                    
-                    Text("Active Work Time:")
-                        .font(GymTheme.Typography.subheadline)
+            // Stats
+            HStack(spacing: GymTheme.Spacing.md) {
+                VStack(alignment: .center) {
+                    Text("\(workout.exercises.count)")
+                        .font(GymTheme.Typography.title2)
+                        .foregroundColor(.gymSecondary)
+                    Text("exercises")
+                        .font(GymTheme.Typography.caption)
                         .foregroundColor(.gymTextSecondary)
-                    
-                    Text(formatDuration(workout.totalWorkTime))
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
-                        .foregroundColor(.gymPrimary)
-                    
-                    Spacer()
+                }
+                
+                VStack(alignment: .center) {
+                    Text("\(workout.totalSets)")
+                        .font(GymTheme.Typography.title2)
+                        .foregroundColor(.gymAccent)
+                    Text("sets")
+                        .font(GymTheme.Typography.caption)
+                        .foregroundColor(.gymTextSecondary)
+                }
+                
+                VStack(alignment: .center) {
+                    Text("\(workout.totalReps)")
+                        .font(GymTheme.Typography.title2)
+                        .foregroundColor(.gymSuccess)
+                    Text("reps")
+                        .font(GymTheme.Typography.caption)
+                        .foregroundColor(.gymTextSecondary)
                 }
             }
         }
@@ -241,14 +216,37 @@ struct WorkoutView: View {
     @ViewBuilder
     private var actionButtons: some View {
         if workout.isCompleted {
-            // For completed workouts being edited, just show a Done button
+            // For completed workouts, show Done and Repeat buttons
             VStack(spacing: GymTheme.Spacing.md) {
-            Button {
+                // Repeat Workout Button
+                Button {
+                    repeatWorkout()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.counterclockwise.circle.fill")
+                        Text("Repeat Workout")
+                    }
+                    .font(GymTheme.Typography.buttonText)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, GymTheme.Spacing.md)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "FF6B35"), Color(hex: "FF8C5A")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+                }
+                
+                // Done Editing Button
+                Button {
                     dismiss()
-            } label: {
+                } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Done Editing")
+                        Text("Done")
                     }
                     .font(GymTheme.Typography.buttonText)
                     .foregroundColor(.black)
@@ -262,7 +260,7 @@ struct WorkoutView: View {
                         )
                     )
                     .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
-            }
+                }
             }
             .padding(.top, GymTheme.Spacing.lg)
         } else {
@@ -386,15 +384,56 @@ struct WorkoutView: View {
         }
         
         workout.isCompleted = true
-        workout.duration = elapsedTime                    // Total time of workout
         workout.savedWorkTime = workout.totalWorkTime     // Time actually spent doing sets
         
         // Show comparison if this is a repeated workout
         if originalWorkout != nil {
             showingComparison = true
         } else {
-        dismiss()
+            dismiss()
         }
+    }
+    
+    private func repeatWorkout() {
+        // Create a new workout based on this completed one
+        let newWorkout = Workout(
+            name: workout.name,
+            repeatedFromWorkoutId: workout.id
+        )
+        
+        // Copy all exercises
+        for originalExercise in workout.exercises.sorted(by: { $0.order < $1.order }) {
+            let newExercise = Exercise(
+                name: originalExercise.name,
+                muscleGroup: originalExercise.muscleGroup,
+                order: originalExercise.order,
+                targetSets: originalExercise.targetSets,
+                targetReps: originalExercise.targetReps
+            )
+            
+            // Copy all sets with same weight/reps but reset completion and work time
+            for originalSet in originalExercise.sortedSets {
+                let newSet = ExerciseSet(
+                    reps: originalSet.reps,
+                    weight: originalSet.weight,
+                    order: originalSet.order,
+                    isCompleted: false,
+                    previousWeight: originalSet.weight,
+                    previousReps: originalSet.reps,
+                    workTime: 0,
+                    workStartTime: nil
+                )
+                newExercise.sets.append(newSet)
+                newSet.exercise = newExercise
+            }
+            
+            newWorkout.exercises.append(newExercise)
+            newExercise.workout = newWorkout
+        }
+        
+        // Insert into model context and present
+        modelContext.insert(newWorkout)
+        repeatedWorkout = newWorkout
     }
 }
 
@@ -1375,15 +1414,6 @@ struct WorkoutComparisonView: View {
                 )
                 
                 ComparisonRow(
-                    label: "Duration",
-                    oldValue: formatDuration(originalWorkout.duration),
-                    newValue: formatDuration(newWorkout.duration),
-                    change: durationChange,
-                    unit: "",
-                    lowerIsBetter: true
-                )
-                
-                ComparisonRow(
                     label: "Work Time",
                     oldValue: formatDuration(originalWorkout.savedWorkTime),
                     newValue: formatDuration(newWorkout.savedWorkTime),
@@ -1430,10 +1460,6 @@ struct WorkoutComparisonView: View {
     // MARK: - Computed Properties
     private var volumeChange: Double {
         newWorkout.totalVolume - originalWorkout.totalVolume
-    }
-    
-    private var durationChange: Double {
-        newWorkout.duration - originalWorkout.duration
     }
     
     private var workTimeChange: Double {
