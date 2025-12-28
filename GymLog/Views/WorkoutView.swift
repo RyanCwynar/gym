@@ -10,9 +10,8 @@ struct WorkoutView: View {
     @State private var showingExercisePicker = false
     @State private var showingFinishAlert = false
     @State private var showingDiscardAlert = false
-    @State private var workoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var elapsedTime: TimeInterval = 0
-    @State private var workoutStartTime: Date?
     
     var body: some View {
         NavigationStack {
@@ -22,9 +21,6 @@ struct WorkoutView: View {
                 
                 ScrollView {
                     VStack(spacing: GymTheme.Spacing.lg) {
-                        // Workout Header
-                        workoutHeader
-                        
                         // Timer Card
                         timerCard
                         
@@ -69,8 +65,8 @@ struct WorkoutView: View {
                 }
             }
             .sheet(isPresented: $showingExercisePicker) {
-                ExercisePickerView { template in
-                    addExercise(from: template)
+                MuscleGroupPickerView { exerciseName, muscleGroup in
+                    addExercise(name: exerciseName, muscleGroup: muscleGroup)
                 }
             }
             .alert("Finish Workout?", isPresented: $showingFinishAlert) {
@@ -91,26 +87,15 @@ struct WorkoutView: View {
                 Text("Are you sure you want to discard this workout? All progress will be lost.")
             }
             .onAppear {
-                if workoutStartTime == nil {
-                    workoutStartTime = Date()
-                }
+                // Calculate elapsed from persisted start date
+                elapsedTime = workout.elapsedTime
             }
-            .onReceive(workoutTimer) { _ in
-                if let startTime = workoutStartTime, !workout.isCompleted {
-                    elapsedTime = Date().timeIntervalSince(startTime)
+            .onReceive(timer) { _ in
+                if !workout.isCompleted {
+                    elapsedTime = workout.elapsedTime
                 }
             }
         }
-    }
-    
-    // MARK: - Workout Header
-    private var workoutHeader: some View {
-        VStack(spacing: GymTheme.Spacing.xs) {
-            Text(workout.date.formatted(date: .complete, time: .omitted))
-                .font(GymTheme.Typography.subheadline)
-                .foregroundColor(.gymTextSecondary)
-        }
-        .padding(.top, GymTheme.Spacing.md)
     }
     
     // MARK: - Timer Card
@@ -262,14 +247,14 @@ struct WorkoutView: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
-    private func addExercise(from template: ExerciseTemplate) {
+    private func addExercise(name: String, muscleGroup: String) {
         let exercise = Exercise(
-            name: template.name,
-            muscleGroup: template.muscleGroup.rawValue,
+            name: name,
+            muscleGroup: muscleGroup,
             order: workout.exercises.count
         )
         
-        // Add default set
+        // Add first set with default values
         let set = ExerciseSet(order: 0)
         exercise.sets.append(set)
         set.exercise = exercise
@@ -295,8 +280,6 @@ struct ExerciseCard: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var exercise: Exercise
     let onDelete: () -> Void
-    
-    @State private var setInputs: [(weight: String, reps: String)] = []
     
     var body: some View {
         VStack(alignment: .leading, spacing: GymTheme.Spacing.md) {
@@ -327,11 +310,14 @@ struct ExerciseCard: View {
             }
             
             // Sets
-            VStack(spacing: GymTheme.Spacing.xs) {
+            VStack(spacing: GymTheme.Spacing.sm) {
                 ForEach(Array(exercise.sortedSets.enumerated()), id: \.element.id) { index, set in
-                    SetRow(set: set, setNumber: index + 1, onDelete: {
-                        deleteSet(set)
-                    })
+                    SetRow(
+                        set: set,
+                        setNumber: index + 1,
+                        previousWeight: index > 0 ? exercise.sortedSets[index - 1].weight : nil,
+                        onDelete: { deleteSet(set) }
+                    )
                 }
             }
             
@@ -358,7 +344,9 @@ struct ExerciseCard: View {
     }
     
     private func addSet() {
-        let set = ExerciseSet(order: exercise.sets.count)
+        // Get weight from last set if exists
+        let lastWeight = exercise.sortedSets.last?.weight ?? 0
+        let set = ExerciseSet(weight: lastWeight, order: exercise.sets.count)
         exercise.sets.append(set)
         set.exercise = exercise
     }
@@ -369,129 +357,193 @@ struct ExerciseCard: View {
     }
 }
 
-// MARK: - Set Row
+// MARK: - Set Row with +/- Buttons (Stacked Layout)
 struct SetRow: View {
     @Bindable var set: ExerciseSet
     let setNumber: Int
+    let previousWeight: Double?
     let onDelete: () -> Void
     
     @State private var weightText: String = ""
     @State private var repsText: String = ""
     
     var body: some View {
-        HStack(spacing: GymTheme.Spacing.md) {
-            // Set number / completion toggle
-            Button {
-                set.isCompleted.toggle()
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(set.isCompleted ? Color.gymSuccess : Color.gymTextSecondary.opacity(0.5), lineWidth: 2)
-                        .frame(width: 28, height: 28)
-                    
-                    if set.isCompleted {
-                        Circle()
-                            .fill(Color.gymSuccess)
-                            .frame(width: 28, height: 28)
+        VStack(spacing: GymTheme.Spacing.sm) {
+            // Row 1: Set number and delete button
+            HStack {
+                // Set number / completion toggle
+                Button {
+                    set.isCompleted.toggle()
+                } label: {
+                    HStack(spacing: GymTheme.Spacing.sm) {
+                        ZStack {
+                            Circle()
+                                .stroke(set.isCompleted ? Color.gymSuccess : Color.gymTextSecondary.opacity(0.5), lineWidth: 2)
+                                .frame(width: 32, height: 32)
+                            
+                            if set.isCompleted {
+                                Circle()
+                                    .fill(Color.gymSuccess)
+                                    .frame(width: 32, height: 32)
+                                
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("\(setNumber)")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.gymTextSecondary)
+                            }
+                        }
                         
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    } else {
-                        Text("\(setNumber)")
-                            .font(GymTheme.Typography.footnote)
-                            .foregroundColor(.gymTextSecondary)
+                        Text("Set \(setNumber)")
+                            .font(GymTheme.Typography.headline)
+                            .foregroundColor(set.isCompleted ? .gymSuccess : .gymText)
+                        
+                        if set.isCompleted {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.gymSuccess)
+                                .font(.system(size: 14))
+                        }
                     }
+                }
+                
+                Spacer()
+                
+                // Delete button
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gymError.opacity(0.7))
+                        .padding(8)
+                        .background(Color.gymError.opacity(0.1))
+                        .clipShape(Circle())
                 }
             }
             
-            // Weight input
-            VStack(alignment: .leading, spacing: 2) {
-                Text("lbs")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.gymTextSecondary)
+            // Row 2: Weight controls
+            HStack(spacing: GymTheme.Spacing.sm) {
+                Button {
+                    adjustWeight(-5)
+                } label: {
+                    Text("-5")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.gymPrimary)
+                        .frame(width: 50, height: 48)
+                        .background(Color.gymPrimary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
                 
-                TextField("0", text: $weightText)
-                    .font(GymTheme.Typography.headline)
-                    .foregroundColor(.gymText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 70)
-                    .padding(.vertical, 6)
-                    .background(Color.gymSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.small))
-                    .onChange(of: weightText) { _, newValue in
-                        set.weight = Double(newValue) ?? 0
-                    }
+                HStack(spacing: 4) {
+                    TextField("0", text: $weightText)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.gymText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: weightText) { _, newValue in
+                            set.weight = Double(newValue) ?? 0
+                        }
+                    
+                    Text("lbs")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymTextSecondary)
+                }
+                .padding(.horizontal, GymTheme.Spacing.md)
+                .padding(.vertical, GymTheme.Spacing.sm)
+                .background(Color.gymSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                
+                Button {
+                    adjustWeight(5)
+                } label: {
+                    Text("+5")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.gymPrimary)
+                        .frame(width: 50, height: 48)
+                        .background(Color.gymPrimary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
             
-            Text("×")
-                .font(GymTheme.Typography.headline)
-                .foregroundColor(.gymTextSecondary)
-            
-            // Reps input
-            VStack(alignment: .leading, spacing: 2) {
-                Text("reps")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.gymTextSecondary)
+            // Row 3: Reps controls
+            HStack(spacing: GymTheme.Spacing.sm) {
+                Button {
+                    adjustReps(-1)
+                } label: {
+                    Text("-1")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.gymSecondary)
+                        .frame(width: 50, height: 48)
+                        .background(Color.gymSecondary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
                 
-                TextField("0", text: $repsText)
-                    .font(GymTheme.Typography.headline)
-                    .foregroundColor(.gymText)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 50)
-                    .padding(.vertical, 6)
-                    .background(Color.gymSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.small))
-                    .onChange(of: repsText) { _, newValue in
-                        set.reps = Int(newValue) ?? 0
-                    }
-            }
-            
-            Spacer()
-            
-            // Delete button
-            Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.gymTextSecondary.opacity(0.5))
+                HStack(spacing: 4) {
+                    TextField("0", text: $repsText)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.gymText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: repsText) { _, newValue in
+                            set.reps = Int(newValue) ?? 0
+                        }
+                    
+                    Text("reps")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymTextSecondary)
+                }
+                .padding(.horizontal, GymTheme.Spacing.md)
+                .padding(.vertical, GymTheme.Spacing.sm)
+                .background(Color.gymSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                
+                Button {
+                    adjustReps(1)
+                } label: {
+                    Text("+1")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.gymSecondary)
+                        .frame(width: 50, height: 48)
+                        .background(Color.gymSecondary.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
         }
-        .padding(.vertical, GymTheme.Spacing.xs)
-        .padding(.horizontal, GymTheme.Spacing.sm)
-        .background(set.isCompleted ? Color.gymSuccess.opacity(0.1) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.small))
+        .padding(GymTheme.Spacing.md)
+        .background(set.isCompleted ? Color.gymSuccess.opacity(0.08) : Color.gymSurface.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
         .onAppear {
+            // Auto-fill weight from previous set or use current value
+            if set.weight == 0, let prevWeight = previousWeight, prevWeight > 0 {
+                set.weight = prevWeight
+            }
             weightText = set.weight > 0 ? String(format: "%.0f", set.weight) : ""
             repsText = set.reps > 0 ? "\(set.reps)" : ""
         }
     }
+    
+    private func adjustWeight(_ delta: Double) {
+        let newWeight = max(0, set.weight + delta)
+        set.weight = newWeight
+        weightText = String(format: "%.0f", newWeight)
+    }
+    
+    private func adjustReps(_ delta: Int) {
+        let newReps = max(0, set.reps + delta)
+        set.reps = newReps
+        repsText = "\(newReps)"
+    }
 }
 
-// MARK: - Exercise Picker View
-struct ExercisePickerView: View {
+// MARK: - Muscle Group Picker (Simplified Exercise Selection)
+struct MuscleGroupPickerView: View {
     @Environment(\.dismiss) private var dismiss
-    let onSelect: (ExerciseTemplate) -> Void
+    let onSelect: (String, String) -> Void
     
-    @State private var searchText = ""
     @State private var selectedMuscleGroup: MuscleGroup?
-    
-    var filteredExercises: [ExerciseTemplate] {
-        var exercises = ExerciseLibrary.exercises
-        
-        if let muscleGroup = selectedMuscleGroup {
-            exercises = exercises.filter { $0.muscleGroup == muscleGroup }
-        }
-        
-        if !searchText.isEmpty {
-            exercises = exercises.filter { 
-                $0.name.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        
-        return exercises
-    }
+    @State private var searchText = ""
     
     var body: some View {
         NavigationStack {
@@ -499,68 +551,31 @@ struct ExercisePickerView: View {
                 Color.gymBackground
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Search bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gymTextSecondary)
-                        
-                        TextField("Search exercises", text: $searchText)
-                            .foregroundColor(.gymText)
-                    }
-                    .padding(GymTheme.Spacing.sm)
-                    .background(Color.gymSurfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
-                    .padding(.horizontal, GymTheme.Spacing.md)
-                    .padding(.top, GymTheme.Spacing.md)
-                    
-                    // Muscle group filter
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: GymTheme.Spacing.xs) {
-                            MuscleGroupChip(
-                                muscleGroup: MuscleGroup.fullBody,
-                                isSelected: selectedMuscleGroup == nil
-                            ) {
-                                selectedMuscleGroup = nil
-                            }
-                            
-                            ForEach(MuscleGroup.allCases.filter { $0 != .fullBody }, id: \.self) { group in
-                                MuscleGroupChip(
-                                    muscleGroup: group,
-                                    isSelected: selectedMuscleGroup == group
-                                ) {
-                                    selectedMuscleGroup = group
-                                }
-                            }
-                        }
-                        .padding(.horizontal, GymTheme.Spacing.md)
-                    }
-                    .padding(.vertical, GymTheme.Spacing.md)
-                    
-                    // Exercise list
-                    ScrollView {
-                        LazyVStack(spacing: GymTheme.Spacing.xs) {
-                            ForEach(filteredExercises) { exercise in
-                                Button {
-                                    onSelect(exercise)
-                                    dismiss()
-                                } label: {
-                                    ExerciseRow(
-                                        name: exercise.name,
-                                        muscleGroup: exercise.muscleGroup.rawValue
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, GymTheme.Spacing.md)
-                        .padding(.bottom, GymTheme.Spacing.xl)
-                    }
+                if selectedMuscleGroup == nil {
+                    // Muscle group grid
+                    muscleGroupGrid
+                } else {
+                    // Exercise list for selected muscle group
+                    exerciseList
                 }
             }
-            .navigationTitle("Add Exercise")
+            .navigationTitle(selectedMuscleGroup?.rawValue ?? "Select Muscle Group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if selectedMuscleGroup != nil {
+                        Button {
+                            selectedMuscleGroup = nil
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Back")
+                            }
+                            .foregroundColor(.gymPrimary)
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
@@ -570,6 +585,118 @@ struct ExercisePickerView: View {
             }
         }
     }
+    
+    private var muscleGroupGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: GymTheme.Spacing.md) {
+                ForEach(MuscleGroup.allCases.filter { $0 != .fullBody }, id: \.self) { group in
+                    Button {
+                        selectedMuscleGroup = group
+                    } label: {
+                        VStack(spacing: GymTheme.Spacing.sm) {
+                            Image(systemName: group.icon)
+                                .font(.system(size: 32))
+                                .foregroundColor(muscleGroupColor(group))
+                            
+                            Text(group.rawValue)
+                                .font(GymTheme.Typography.headline)
+                                .foregroundColor(.gymText)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, GymTheme.Spacing.xl)
+                        .background(Color.gymSurfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
+                    }
+                }
+            }
+            .padding(GymTheme.Spacing.md)
+        }
+    }
+    
+    private var exerciseList: some View {
+        VStack(spacing: 0) {
+            // Search bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gymTextSecondary)
+                
+                TextField("Search exercises", text: $searchText)
+                    .foregroundColor(.gymText)
+            }
+            .padding(GymTheme.Spacing.sm)
+            .background(Color.gymSurfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+            .padding(.horizontal, GymTheme.Spacing.md)
+            .padding(.top, GymTheme.Spacing.md)
+            
+            ScrollView {
+                LazyVStack(spacing: GymTheme.Spacing.xs) {
+                    ForEach(filteredExercises) { exercise in
+                        Button {
+                            onSelect(exercise.name, exercise.muscleGroup.rawValue)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.name)
+                                        .font(GymTheme.Typography.headline)
+                                        .foregroundColor(.gymText)
+                                    
+                                    if !exercise.description.isEmpty {
+                                        Text(exercise.description)
+                                            .font(GymTheme.Typography.caption)
+                                            .foregroundColor(.gymTextSecondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.gymPrimary)
+                            }
+                            .padding(GymTheme.Spacing.md)
+                            .background(Color.gymSurfaceElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+                        }
+                    }
+                }
+                .padding(.horizontal, GymTheme.Spacing.md)
+                .padding(.top, GymTheme.Spacing.md)
+                .padding(.bottom, GymTheme.Spacing.xl)
+            }
+        }
+    }
+    
+    private var filteredExercises: [ExerciseTemplate] {
+        guard let group = selectedMuscleGroup else { return [] }
+        var exercises = ExerciseLibrary.exercises(for: group)
+        
+        if !searchText.isEmpty {
+            exercises = exercises.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        return exercises
+    }
+    
+    private func muscleGroupColor(_ group: MuscleGroup) -> Color {
+        switch group {
+        case .chest: return Color(hex: "FF6B6B")
+        case .back: return Color(hex: "4ECDC4")
+        case .shoulders: return Color(hex: "45B7D1")
+        case .biceps: return Color(hex: "96CEB4")
+        case .triceps: return Color(hex: "FFEAA7")
+        case .legs: return Color(hex: "DDA0DD")
+        case .core: return Color(hex: "98D8C8")
+        case .cardio: return Color(hex: "F7DC6F")
+        case .fullBody: return Color.gymPrimary
+        }
+    }
 }
 
 #Preview {
@@ -577,4 +704,3 @@ struct ExercisePickerView: View {
     return WorkoutView(workout: workout)
         .modelContainer(for: [Workout.self, Exercise.self, ExerciseSet.self], inMemory: true)
 }
-

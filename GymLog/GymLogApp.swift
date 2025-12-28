@@ -8,13 +8,33 @@ struct GymLogApp: App {
             Workout.self,
             Exercise.self,
             ExerciseSet.self,
+            WorkoutTemplate.self,
+            TemplateExercise.self,
+            ExerciseHistory.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // If schema migration fails, delete old store and create fresh
+            print("Failed to create ModelContainer, attempting to recover: \(error)")
+            
+            // Get the default store URL and delete it
+            let storeURL = modelConfiguration.url
+            try? FileManager.default.removeItem(at: storeURL)
+            // Also remove the write-ahead log and shared memory files
+            let walURL = storeURL.deletingPathExtension().appendingPathExtension("sqlite-wal")
+            let shmURL = storeURL.deletingPathExtension().appendingPathExtension("sqlite-shm")
+            try? FileManager.default.removeItem(at: walURL)
+            try? FileManager.default.removeItem(at: shmURL)
+            
+            // Try again with fresh database
+            do {
+                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            } catch {
+                fatalError("Could not create ModelContainer after recovery attempt: \(error)")
+            }
         }
     }()
 

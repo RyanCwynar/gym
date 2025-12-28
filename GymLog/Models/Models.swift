@@ -5,29 +5,42 @@ import SwiftData
 final class Workout {
     var id: UUID
     var date: Date
+    var startDate: Date  // When workout actually started (for timer)
     var name: String
     var notes: String
     var duration: TimeInterval
     var isCompleted: Bool
-    
+    var templateId: UUID?
+    var templateName: String?
+
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise]
-    
+
     init(
         id: UUID = UUID(),
         date: Date = Date(),
+        startDate: Date = Date(),
         name: String = "Workout",
         notes: String = "",
         duration: TimeInterval = 0,
-        isCompleted: Bool = false
+        isCompleted: Bool = false,
+        templateId: UUID? = nil,
+        templateName: String? = nil
     ) {
         self.id = id
         self.date = date
+        self.startDate = startDate
         self.name = name
         self.notes = notes
         self.duration = duration
         self.isCompleted = isCompleted
+        self.templateId = templateId
+        self.templateName = templateName
         self.exercises = []
+    }
+    
+    var elapsedTime: TimeInterval {
+        Date().timeIntervalSince(startDate)
     }
     
     var totalVolume: Double {
@@ -50,6 +63,10 @@ final class Workout {
         }
         return "\(minutes) min"
     }
+
+    var usedTemplate: Bool {
+        templateId != nil
+    }
 }
 
 @Model
@@ -58,21 +75,33 @@ final class Exercise {
     var name: String
     var muscleGroup: String
     var order: Int
+    var targetSets: Int?
+    var targetReps: Int?
+    var previousBest: String?
+    var suggestionNote: String?
     var workout: Workout?
-    
+
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSet.exercise)
     var sets: [ExerciseSet]
-    
+
     init(
         id: UUID = UUID(),
         name: String,
         muscleGroup: String = "",
-        order: Int = 0
+        order: Int = 0,
+        targetSets: Int? = nil,
+        targetReps: Int? = nil,
+        previousBest: String? = nil,
+        suggestionNote: String? = nil
     ) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
         self.order = order
+        self.targetSets = targetSets
+        self.targetReps = targetReps
+        self.previousBest = previousBest
+        self.suggestionNote = suggestionNote
         self.sets = []
     }
     
@@ -83,6 +112,11 @@ final class Exercise {
     var bestSet: ExerciseSet? {
         sets.max { ($0.weight * Double($0.reps)) < ($1.weight * Double($1.reps)) }
     }
+
+    var hasProgression: Bool {
+        guard let targetReps = targetReps else { return false }
+        return sets.allSatisfy { $0.isCompleted && $0.reps >= targetReps }
+    }
 }
 
 @Model
@@ -92,24 +126,176 @@ final class ExerciseSet {
     var weight: Double
     var order: Int
     var isCompleted: Bool
+    var previousWeight: Double?
+    var previousReps: Int?
     var exercise: Exercise?
-    
+
     init(
         id: UUID = UUID(),
         reps: Int = 0,
         weight: Double = 0,
         order: Int = 0,
-        isCompleted: Bool = false
+        isCompleted: Bool = false,
+        previousWeight: Double? = nil,
+        previousReps: Int? = nil
     ) {
         self.id = id
         self.reps = reps
         self.weight = weight
         self.order = order
         self.isCompleted = isCompleted
+        self.previousWeight = previousWeight
+        self.previousReps = previousReps
     }
     
     var volume: Double {
         Double(reps) * weight
+    }
+}
+
+// MARK: - Workout Template
+@Model
+final class WorkoutTemplate {
+    var id: UUID
+    var name: String
+    var templateDescription: String
+    var isCustom: Bool
+    var category: String
+    var createdDate: Date
+    var lastUsed: Date?
+    var timesUsed: Int
+
+    @Relationship(deleteRule: .cascade, inverse: \TemplateExercise.template)
+    var templateExercises: [TemplateExercise]
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        templateDescription: String = "",
+        isCustom: Bool = false,
+        category: String = "Total Body",
+        createdDate: Date = Date(),
+        lastUsed: Date? = nil,
+        timesUsed: Int = 0
+    ) {
+        self.id = id
+        self.name = name
+        self.templateDescription = templateDescription
+        self.isCustom = isCustom
+        self.category = category
+        self.createdDate = createdDate
+        self.lastUsed = lastUsed
+        self.timesUsed = timesUsed
+        self.templateExercises = []
+    }
+
+    var estimatedDuration: TimeInterval {
+        let averageSecondsPerSet = 45.0
+        let averageRestBetweenSets = 90.0
+        let totalSets = templateExercises.reduce(0) { $0 + $1.targetSets }
+        return TimeInterval(totalSets) * (averageSecondsPerSet + averageRestBetweenSets)
+    }
+}
+
+// MARK: - Template Exercise
+@Model
+final class TemplateExercise {
+    var id: UUID
+    var exerciseName: String
+    var muscleGroup: String
+    var order: Int
+    var targetSets: Int
+    var targetReps: Int
+    var restSeconds: Int
+    var notes: String
+
+    var template: WorkoutTemplate?
+
+    init(
+        id: UUID = UUID(),
+        exerciseName: String,
+        muscleGroup: String = "",
+        order: Int = 0,
+        targetSets: Int = 3,
+        targetReps: Int = 10,
+        restSeconds: Int = 90,
+        notes: String = ""
+    ) {
+        self.id = id
+        self.exerciseName = exerciseName
+        self.muscleGroup = muscleGroup
+        self.order = order
+        self.targetSets = targetSets
+        self.targetReps = targetReps
+        self.restSeconds = restSeconds
+        self.notes = notes
+    }
+}
+
+// MARK: - Exercise History
+@Model
+final class ExerciseHistory {
+    var id: UUID
+    var exerciseName: String
+    var workoutDate: Date
+    var setsData: Data
+
+    var workout: Workout?
+
+    init(
+        id: UUID = UUID(),
+        exerciseName: String,
+        workoutDate: Date,
+        sets: [HistoricalSet]
+    ) {
+        self.id = id
+        self.exerciseName = exerciseName
+        self.workoutDate = workoutDate
+
+        if let encoded = try? JSONEncoder().encode(sets) {
+            self.setsData = encoded
+        } else {
+            self.setsData = Data()
+        }
+    }
+
+    var sets: [HistoricalSet] {
+        get {
+            if let decoded = try? JSONDecoder().decode([HistoricalSet].self, from: setsData) {
+                return decoded
+            }
+            return []
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                setsData = encoded
+            }
+        }
+    }
+
+    var totalVolume: Double {
+        sets.reduce(0) { $0 + $1.volume }
+    }
+
+    var bestSet: HistoricalSet? {
+        sets.max { $0.volume < $1.volume }
+    }
+
+    var averageWeight: Double {
+        guard !sets.isEmpty else { return 0 }
+        let totalWeight = sets.reduce(0.0) { $0 + $1.weight }
+        return totalWeight / Double(sets.count)
+    }
+}
+
+// MARK: - Historical Set
+struct HistoricalSet: Codable {
+    let weight: Double
+    let reps: Int
+    let isCompleted: Bool
+
+    var volume: Double {
+        weight * Double(reps)
     }
 }
 
@@ -124,7 +310,7 @@ enum MuscleGroup: String, CaseIterable {
     case core = "Core"
     case cardio = "Cardio"
     case fullBody = "Full Body"
-    
+
     var icon: String {
         switch self {
         case .chest: return "figure.arms.open"
@@ -138,7 +324,7 @@ enum MuscleGroup: String, CaseIterable {
         case .fullBody: return "figure.mixed.cardio"
         }
     }
-    
+
     var color: String {
         switch self {
         case .chest: return "ChestColor"
