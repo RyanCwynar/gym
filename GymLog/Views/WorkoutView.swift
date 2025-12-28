@@ -8,6 +8,10 @@ struct WorkoutView: View {
     @Bindable var workout: Workout
     var originalWorkout: Workout?  // For repeated workouts - used for comparison
     
+    // Query completed workouts to find previous exercise weights
+    @Query(filter: #Predicate<Workout> { $0.isCompleted }, sort: \Workout.date, order: .reverse)
+    private var completedWorkouts: [Workout]
+    
     @State private var showingExercisePicker = false
     @State private var showingFinishAlert = false
     @State private var showingDiscardAlert = false
@@ -34,15 +38,12 @@ struct WorkoutView: View {
                         
                         // Notes Section
                         notesSection
+                        
+                        // Action Buttons
+                        actionButtons
                     }
                     .padding(.horizontal, GymTheme.Spacing.md)
-                    .padding(.bottom, 120)
-                }
-                
-                // Bottom Action Bar
-                VStack {
-                    Spacer()
-                    bottomActionBar
+                    .padding(.bottom, GymTheme.Spacing.xxl)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -240,21 +241,9 @@ struct WorkoutView: View {
         }
     }
     
-    // MARK: - Bottom Action Bar
-    private var bottomActionBar: some View {
-        HStack(spacing: GymTheme.Spacing.md) {
-            Button {
-                showingDiscardAlert = true
-            } label: {
-                Text("Discard")
-                    .font(GymTheme.Typography.buttonText)
-                    .foregroundColor(.gymError)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, GymTheme.Spacing.md)
-                    .background(Color.gymError.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
-            }
-            
+    // MARK: - Action Buttons
+    private var actionButtons: some View {
+        VStack(spacing: GymTheme.Spacing.md) {
             Button {
                 showingFinishAlert = true
             } label: {
@@ -275,12 +264,17 @@ struct WorkoutView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
             }
+            
+            Button {
+                showingDiscardAlert = true
+            } label: {
+                Text("Discard Workout")
+                    .font(GymTheme.Typography.subheadline)
+                    .foregroundColor(.gymError)
+            }
+            .padding(.top, GymTheme.Spacing.sm)
         }
-        .padding(GymTheme.Spacing.md)
-        .background(
-            Color.gymBackground
-                .shadow(color: .black.opacity(0.3), radius: 10, y: -5)
-        )
+        .padding(.top, GymTheme.Spacing.lg)
     }
     
     // MARK: - Helpers
@@ -302,13 +296,52 @@ struct WorkoutView: View {
             order: workout.exercises.count
         )
         
-        // Add first set with default 8 reps
-        let set = ExerciseSet(reps: 8, order: 0)
+        // Find last weight and reps used for this exercise
+        let (lastWeight, lastReps) = findLastWeightAndReps(for: name)
+        
+        // Get default weight from template if no history
+        let defaultWeight = getDefaultWeight(for: name)
+        let weightToUse = lastWeight ?? defaultWeight
+        
+        // Add first set with last used weight/reps (or defaults)
+        let set = ExerciseSet(
+            reps: lastReps ?? 8,
+            weight: weightToUse,
+            order: 0,
+            previousWeight: lastWeight,  // Only show previous if we actually have history
+            previousReps: lastReps
+        )
         exercise.sets.append(set)
         set.exercise = exercise
         
         workout.exercises.append(exercise)
         exercise.workout = workout
+    }
+    
+    /// Find the last weight and reps used for an exercise from workout history
+    private func findLastWeightAndReps(for exerciseName: String) -> (Double?, Int?) {
+        // Search through completed workouts (already sorted by date, newest first)
+        for completedWorkout in completedWorkouts {
+            // Skip the current workout if it's somehow in the list
+            if completedWorkout.id == workout.id { continue }
+            
+            // Find the exercise by name
+            if let exercise = completedWorkout.exercises.first(where: { $0.name == exerciseName }) {
+                // Get the last set from that exercise
+                if let lastSet = exercise.sortedSets.last {
+                    return (lastSet.weight, lastSet.reps)
+                }
+            }
+        }
+        return (nil, nil)
+    }
+    
+    /// Get default weight for an exercise from the template library
+    private func getDefaultWeight(for exerciseName: String) -> Double {
+        if let template = ExerciseLibrary.exercises.first(where: { $0.name == exerciseName }) {
+            return template.defaultWeight
+        }
+        return 0  // Custom exercises default to 0
     }
     
     private func deleteExercise(_ exercise: Exercise) {
@@ -727,7 +760,8 @@ struct SetRow: View {
                 isEditing = true
             } label: {
             VStack(alignment: .leading, spacing: 2) {
-                    Text("\(String(format: "%.0f", set.weight)) lbs × \(set.reps) reps")
+                    // Show weight only if > 0 (bodyweight exercises just show reps)
+                    Text(set.weight > 0 ? "\(String(format: "%.0f", set.weight)) lbs × \(set.reps) reps" : "\(set.reps) reps")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundColor(.gymText)
                         .lineLimit(1)
@@ -1521,21 +1555,23 @@ struct ExerciseComparisonCard: View {
             
             // Best set comparison
             HStack(spacing: GymTheme.Spacing.lg) {
-                // Weight
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Best Weight")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.gymTextSecondary)
-                    
-                    HStack(spacing: 4) {
-                        Text("\(String(format: "%.0f", bestNewSet?.weight ?? 0)) lbs")
-                            .font(GymTheme.Typography.subheadline)
-                            .foregroundColor(.gymText)
+                // Weight - only show for weighted exercises
+                if (bestNewSet?.weight ?? 0) > 0 || (bestOriginalSet?.weight ?? 0) > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Best Weight")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.gymTextSecondary)
                         
-                        if weightChange != 0 {
-                            Text(weightChange > 0 ? "+\(Int(weightChange))" : "\(Int(weightChange))")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(weightChange > 0 ? .gymSuccess : .gymError)
+                        HStack(spacing: 4) {
+                            Text("\(String(format: "%.0f", bestNewSet?.weight ?? 0)) lbs")
+                                .font(GymTheme.Typography.subheadline)
+                                .foregroundColor(.gymText)
+                            
+                            if weightChange != 0 {
+                                Text(weightChange > 0 ? "+\(Int(weightChange))" : "\(Int(weightChange))")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(weightChange > 0 ? .gymSuccess : .gymError)
+                            }
                         }
                     }
                 }

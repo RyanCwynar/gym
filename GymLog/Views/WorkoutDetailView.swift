@@ -368,7 +368,8 @@ struct ExerciseDetailCard: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.gymTextSecondary)
                         
-                        Text("\(String(format: "%.0f", best.weight)) × \(best.reps)")
+                        // Show weight only if > 0 (bodyweight exercises just show reps)
+                        Text(best.weight > 0 ? "\(String(format: "%.0f", best.weight)) × \(best.reps)" : "\(best.reps) reps")
                             .font(GymTheme.Typography.subheadline)
                             .foregroundColor(.gymPrimary)
                     }
@@ -412,8 +413,9 @@ struct ExerciseDetailCard: View {
                             }
                             .frame(width: 35, alignment: .leading)
                             
-                            Text(String(format: "%.0f", set.weight))
-                                .foregroundColor(.gymText)
+                            // Show weight or "-" for bodyweight exercises
+                            Text(set.weight > 0 ? String(format: "%.0f", set.weight) : "-")
+                                .foregroundColor(set.weight > 0 ? .gymText : .gymTextSecondary.opacity(0.5))
                                 .frame(width: 50, alignment: .center)
                             
                             Text("\(set.reps)")
