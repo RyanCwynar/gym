@@ -203,9 +203,11 @@ class ConvexSyncService: ObservableObject {
         return logs
     }
     
-    /// Generic Convex mutation call
+    /// Generic Convex function call (works for queries and mutations)
     private func callMutation(path: String, args: [String: Any]) async throws -> [String: Any] {
-        guard let url = URL(string: "\(convexUrl)/api/mutation") else {
+        // Convert path from "module:function" to URL path "module/function"
+        let urlPath = path.replacingOccurrences(of: ":", with: "/")
+        guard let url = URL(string: "\(convexUrl)/api/run/\(urlPath)") else {
             throw SyncError.invalidUrl
         }
         
@@ -213,12 +215,10 @@ class ConvexSyncService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: Any] = [
-            "path": path,
-            "args": args
-        ]
+        // Convex HTTP API expects args directly in the body
+        request.httpBody = try JSONSerialization.data(withJSONObject: args)
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        print("ConvexSyncService: Calling \(path) at \(url)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -226,11 +226,14 @@ class ConvexSyncService: ObservableObject {
             throw SyncError.invalidResponse
         }
         
+        let responseString = String(data: data, encoding: .utf8) ?? "No data"
+        print("ConvexSyncService: Response (\(httpResponse.statusCode)): \(responseString)")
+        
         guard httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw SyncError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
+            throw SyncError.serverError(statusCode: httpResponse.statusCode, message: responseString)
         }
         
+        // Convex HTTP API returns the result directly as JSON
         if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
             return json
         }
@@ -240,7 +243,7 @@ class ConvexSyncService: ObservableObject {
     
     /// Send logs to Convex via HTTP mutation
     private func sendToConvex(logs: [ExerciseLogDTO]) async throws -> Bool {
-        guard let url = URL(string: "\(convexUrl)/api/mutation") else {
+        guard let url = URL(string: "\(convexUrl)/api/run/exerciseLogs/syncLogs") else {
             throw SyncError.invalidUrl
         }
         
@@ -248,18 +251,20 @@ class ConvexSyncService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body = ConvexSyncRequest(
-            path: "exerciseLogs:syncLogs",
-            args: SyncArgs(apiKey: apiKey, logs: logs)
-        )
-        
+        // Convex HTTP API expects args directly in body
+        let body = SyncArgs(apiKey: apiKey, logs: logs)
         request.httpBody = try JSONEncoder().encode(body)
+        
+        print("ConvexSyncService: Syncing \(logs.count) logs to \(url)")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw SyncError.invalidResponse
         }
+        
+        let responseString = String(data: data, encoding: .utf8) ?? "No data"
+        print("ConvexSyncService: Sync response (\(httpResponse.statusCode)): \(responseString)")
         
         if httpResponse.statusCode == 200 {
             // Check if the response indicates success
@@ -269,9 +274,8 @@ class ConvexSyncService: ObservableObject {
             }
             return true
         } else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("ConvexSyncService: Server error - \(errorMessage)")
-            throw SyncError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
+            print("ConvexSyncService: Server error - \(responseString)")
+            throw SyncError.serverError(statusCode: httpResponse.statusCode, message: responseString)
         }
     }
     

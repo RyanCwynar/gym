@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 // Generate a random API key
@@ -15,8 +15,8 @@ function generateApiKey(): string {
   }).join('-');
 }
 
-// Create a new API key
-export const createKey = mutation({
+// Create a new API key - INTERNAL ONLY (use from dashboard/CLI)
+export const createKey = internalMutation({
   args: {
     name: v.string(),
   },
@@ -62,8 +62,8 @@ export const validateKey = mutation({
   },
 });
 
-// List all API keys (for admin purposes)
-export const listKeys = query({
+// List all API keys - INTERNAL ONLY (for admin/dashboard)
+export const listKeys = internalQuery({
   args: {},
   handler: async (ctx) => {
     const keys = await ctx.db.query("apiKeys").collect();
@@ -80,8 +80,8 @@ export const listKeys = query({
   },
 });
 
-// Get full key details (use carefully)
-export const getKey = query({
+// Get full key details - INTERNAL ONLY
+export const getKey = internalQuery({
   args: {
     id: v.id("apiKeys"),
   },
@@ -90,8 +90,8 @@ export const getKey = query({
   },
 });
 
-// Deactivate an API key
-export const deactivateKey = mutation({
+// Deactivate an API key - INTERNAL ONLY
+export const deactivateKey = internalMutation({
   args: {
     key: v.string(),
   },
@@ -113,8 +113,8 @@ export const deactivateKey = mutation({
   },
 });
 
-// Reactivate an API key
-export const reactivateKey = mutation({
+// Reactivate an API key - INTERNAL ONLY
+export const reactivateKey = internalMutation({
   args: {
     key: v.string(),
   },
@@ -136,8 +136,8 @@ export const reactivateKey = mutation({
   },
 });
 
-// Delete an API key (and optionally its data)
-export const deleteKey = mutation({
+// Delete an API key - INTERNAL ONLY
+export const deleteKey = internalMutation({
   args: {
     key: v.string(),
     deleteData: v.optional(v.boolean()),
