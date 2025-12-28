@@ -56,8 +56,14 @@ struct GymLogApp: App {
                     }
                 }
                 .onAppear {
-                    // Initial sync on launch
+                    // Validate API key and sync on launch
                     Task {
+                        // First validate the API key if we have one
+                        if syncService.hasApiKey {
+                            await syncService.validateApiKey()
+                        }
+                        
+                        // Then try to sync
                         await syncService.syncIfNeeded(
                             modelContext: sharedModelContainer.mainContext
                         )

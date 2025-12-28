@@ -54,3 +54,5 @@ Thumbs.db
 
 
 .env.local
+node_modules
+
