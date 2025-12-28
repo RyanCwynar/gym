@@ -49,15 +49,11 @@ struct WorkoutView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        if workout.exercises.isEmpty {
-                            modelContext.delete(workout)
+                    Button(workout.isCompleted ? "Done" : "Cancel") {
+                        // Just dismiss - workout data auto-saves via SwiftData
                             dismiss()
-                        } else {
-                            showingDiscardAlert = true
                         }
-                    }
-                    .foregroundColor(.gymTextSecondary)
+                    .foregroundColor(workout.isCompleted ? .gymPrimary : .gymTextSecondary)
                 }
                 
                 ToolbarItem(placement: .principal) {
@@ -242,8 +238,36 @@ struct WorkoutView: View {
     }
     
     // MARK: - Action Buttons
+    @ViewBuilder
     private var actionButtons: some View {
-        VStack(spacing: GymTheme.Spacing.md) {
+        if workout.isCompleted {
+            // For completed workouts being edited, just show a Done button
+            VStack(spacing: GymTheme.Spacing.md) {
+            Button {
+                    dismiss()
+            } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Done Editing")
+                    }
+                    .font(GymTheme.Typography.buttonText)
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, GymTheme.Spacing.md)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "4CAF50"), Color(hex: "66BB6A")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+            }
+            }
+            .padding(.top, GymTheme.Spacing.lg)
+        } else {
+            // For in-progress workouts, show Finish and Discard buttons
+            VStack(spacing: GymTheme.Spacing.md) {
             Button {
                 showingFinishAlert = true
             } label: {
@@ -264,17 +288,18 @@ struct WorkoutView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
             }
-            
-            Button {
-                showingDiscardAlert = true
-            } label: {
-                Text("Discard Workout")
-                    .font(GymTheme.Typography.subheadline)
-                    .foregroundColor(.gymError)
+                
+                Button {
+                    showingDiscardAlert = true
+                } label: {
+                    Text("Discard Workout")
+                        .font(GymTheme.Typography.subheadline)
+                        .foregroundColor(.gymError)
+                }
+                .padding(.top, GymTheme.Spacing.sm)
             }
-            .padding(.top, GymTheme.Spacing.sm)
+            .padding(.top, GymTheme.Spacing.lg)
         }
-        .padding(.top, GymTheme.Spacing.lg)
     }
     
     // MARK: - Helpers
@@ -368,7 +393,7 @@ struct WorkoutView: View {
         if originalWorkout != nil {
             showingComparison = true
         } else {
-            dismiss()
+        dismiss()
         }
     }
 }
