@@ -8,10 +8,12 @@ final class Workout {
     var startDate: Date  // When workout actually started (for timer)
     var name: String
     var notes: String
-    var duration: TimeInterval
+    var duration: TimeInterval       // Total duration of workout
+    var savedWorkTime: TimeInterval  // Total time spent actually doing sets
     var isCompleted: Bool
     var templateId: UUID?
     var templateName: String?
+    var repeatedFromWorkoutId: UUID?  // ID of workout this was repeated from (for comparison)
 
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise]
@@ -23,9 +25,11 @@ final class Workout {
         name: String = "Workout",
         notes: String = "",
         duration: TimeInterval = 0,
+        savedWorkTime: TimeInterval = 0,
         isCompleted: Bool = false,
         templateId: UUID? = nil,
-        templateName: String? = nil
+        templateName: String? = nil,
+        repeatedFromWorkoutId: UUID? = nil
     ) {
         self.id = id
         self.date = date
@@ -33,14 +37,32 @@ final class Workout {
         self.name = name
         self.notes = notes
         self.duration = duration
+        self.savedWorkTime = savedWorkTime
         self.isCompleted = isCompleted
         self.templateId = templateId
         self.templateName = templateName
+        self.repeatedFromWorkoutId = repeatedFromWorkoutId
         self.exercises = []
     }
     
     var elapsedTime: TimeInterval {
-        Date().timeIntervalSince(startDate)
+        let elapsed = Date().timeIntervalSince(startDate)
+        // Cap at 2 hours (7200 seconds)
+        return min(elapsed, 7200)
+    }
+    
+    // Total work time across all sets
+    var totalWorkTime: TimeInterval {
+        exercises.reduce(0) { total, exercise in
+            total + exercise.sets.reduce(0) { setTotal, set in
+                var time = set.workTime
+                // Add currently running timer if active
+                if let startTime = set.workStartTime {
+                    time += Date().timeIntervalSince(startTime)
+                }
+                return setTotal + time
+            }
+        }
     }
     
     var totalVolume: Double {
@@ -79,6 +101,7 @@ final class Exercise {
     var targetReps: Int?
     var previousBest: String?
     var suggestionNote: String?
+    var duration: TimeInterval  // For cardio exercises (in seconds)
     var workout: Workout?
 
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSet.exercise)
@@ -92,7 +115,8 @@ final class Exercise {
         targetSets: Int? = nil,
         targetReps: Int? = nil,
         previousBest: String? = nil,
-        suggestionNote: String? = nil
+        suggestionNote: String? = nil,
+        duration: TimeInterval = 0
     ) {
         self.id = id
         self.name = name
@@ -102,7 +126,12 @@ final class Exercise {
         self.targetReps = targetReps
         self.previousBest = previousBest
         self.suggestionNote = suggestionNote
+        self.duration = duration
         self.sets = []
+    }
+    
+    var isCardio: Bool {
+        muscleGroup.lowercased() == "cardio"
     }
     
     var sortedSets: [ExerciseSet] {
@@ -128,6 +157,8 @@ final class ExerciseSet {
     var isCompleted: Bool
     var previousWeight: Double?
     var previousReps: Int?
+    var workTime: TimeInterval  // Actual time spent doing the set (in seconds)
+    var workStartTime: Date?    // When the set timer started (for persistence)
     var exercise: Exercise?
 
     init(
@@ -137,7 +168,9 @@ final class ExerciseSet {
         order: Int = 0,
         isCompleted: Bool = false,
         previousWeight: Double? = nil,
-        previousReps: Int? = nil
+        previousReps: Int? = nil,
+        workTime: TimeInterval = 0,
+        workStartTime: Date? = nil
     ) {
         self.id = id
         self.reps = reps
@@ -146,10 +179,16 @@ final class ExerciseSet {
         self.isCompleted = isCompleted
         self.previousWeight = previousWeight
         self.previousReps = previousReps
+        self.workTime = workTime
+        self.workStartTime = workStartTime
     }
     
     var volume: Double {
         Double(reps) * weight
+    }
+    
+    var isTimerRunning: Bool {
+        workStartTime != nil
     }
 }
 
