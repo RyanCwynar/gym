@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GymLog App Icon</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            color: white;
+        }
+        h1 {
+            color: #FF6B35;
+            margin-bottom: 30px;
+        }
+        .icon-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        .icon-size {
+            text-align: center;
+        }
+        .icon-size p {
+            margin-top: 10px;
+            color: #888;
+            font-size: 14px;
+        }
+        .instructions {
+            margin-top: 40px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            max-width: 600px;
+        }
+        .instructions h2 {
+            color: #FF6B35;
+            margin-top: 0;
+        }
+        .instructions ol {
+            color: #ccc;
+            line-height: 1.8;
+        }
+        .instructions code {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #FF6B35;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏋️ GymLog App Icon</h1>
+    
+    <div class="icon-container">
+        <div class="icon-size">
+            <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#1A1A2E"/>
+                        <stop offset="100%" style="stop-color:#0D0D0D"/>
+                    </linearGradient>
+                    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#FF8C5A"/>
+                        <stop offset="100%" style="stop-color:#FF6B35"/>
+                    </linearGradient>
+                    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#000000" flood-opacity="0.5"/>
+                    </filter>
+                </defs>
+                <rect width="1024" height="1024" rx="224" fill="url(#bgGradient)"/>
+                <g opacity="0.03">
+                    <line x1="256" y1="0" x2="256" y2="1024" stroke="white" stroke-width="2"/>
+                    <line x1="512" y1="0" x2="512" y2="1024" stroke="white" stroke-width="2"/>
+                    <line x1="768" y1="0" x2="768" y2="1024" stroke="white" stroke-width="2"/>
+                    <line x1="0" y1="256" x2="1024" y2="256" stroke="white" stroke-width="2"/>
+                    <line x1="0" y1="512" x2="1024" y2="512" stroke="white" stroke-width="2"/>
+                    <line x1="0" y1="768" x2="1024" y2="768" stroke="white" stroke-width="2"/>
+                </g>
+                <g transform="translate(512, 512)" filter="url(#shadow)">
+                    <rect x="-180" y="-24" width="360" height="48" rx="24" fill="url(#accentGradient)"/>
+                    <g transform="translate(-220, 0)">
+                        <rect x="-60" y="-140" width="50" height="280" rx="12" fill="url(#accentGradient)"/>
+                        <rect x="-100" y="-100" width="40" height="200" rx="10" fill="url(#accentGradient)" opacity="0.85"/>
+                        <rect x="-10" y="-50" width="30" height="100" rx="6" fill="url(#accentGradient)" opacity="0.7"/>
+                    </g>
+                    <g transform="translate(220, 0)">
+                        <rect x="10" y="-140" width="50" height="280" rx="12" fill="url(#accentGradient)"/>
+                        <rect x="60" y="-100" width="40" height="200" rx="10" fill="url(#accentGradient)" opacity="0.85"/>
+                        <rect x="-20" y="-50" width="30" height="100" rx="6" fill="url(#accentGradient)" opacity="0.7"/>
+                    </g>
+                </g>
+                <circle cx="512" cy="512" r="280" fill="none" stroke="url(#accentGradient)" stroke-width="3" opacity="0.2"/>
+                <circle cx="180" cy="180" r="8" fill="#FF6B35" opacity="0.4"/>
+                <circle cx="844" cy="844" r="8" fill="#FF6B35" opacity="0.4"/>
+                <circle cx="844" cy="180" r="6" fill="#00D9FF" opacity="0.3"/>
+                <circle cx="180" cy="844" r="6" fill="#00D9FF" opacity="0.3"/>
+            </svg>
+            <p>1024×1024 (App Store)</p>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h2>How to Export</h2>
+        <ol>
+            <li>Right-click the icon above → <strong>Save Image As...</strong> (or take a screenshot)</li>
+            <li>Save as <code>AppIcon.png</code> (1024×1024)</li>
+            <li>In Xcode, open <code>Assets.xcassets</code> → <code>AppIcon</code></li>
+            <li>Drag your PNG into the 1024×1024 slot</li>
+            <li>Xcode will auto-generate all other sizes!</li>
+        </ol>
+        <p style="color: #888; margin-top: 20px;">
+            Or use an online tool like <a href="https://appicon.co" style="color: #FF6B35;">appicon.co</a> to generate all sizes from your 1024×1024 PNG.
+        </p>
+    </div>
+</body>
+</html>
+

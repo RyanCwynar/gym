@@ -9,6 +9,8 @@ struct WorkoutDetailView: View {
     
     @State private var showingDeleteAlert = false
     @State private var showingEditSheet = false
+    @State private var showingRepeatWorkout = false
+    @State private var repeatedWorkout: Workout?
     
     var body: some View {
         NavigationStack {
@@ -20,6 +22,11 @@ struct WorkoutDetailView: View {
                     VStack(spacing: GymTheme.Spacing.lg) {
                         // Header Card
                         headerCard
+                        
+                        // Repeat Workout Button (only for completed workouts)
+                        if workout.isCompleted {
+                            repeatWorkoutButton
+                        }
                         
                         // Stats Row
                         statsRow
@@ -47,6 +54,12 @@ struct WorkoutDetailView: View {
                             Label("Edit", systemImage: "pencil")
                         }
                         
+                        Button {
+                            repeatWorkout()
+                        } label: {
+                            Label("Repeat Workout", systemImage: "arrow.clockwise")
+                        }
+                        
                         Button(role: .destructive) {
                             showingDeleteAlert = true
                         } label: {
@@ -69,7 +82,82 @@ struct WorkoutDetailView: View {
             .sheet(isPresented: $showingEditSheet) {
                 WorkoutView(workout: workout)
             }
+            .sheet(item: $repeatedWorkout) { newWorkout in
+                WorkoutView(workout: newWorkout, originalWorkout: workout)
+            }
         }
+    }
+    
+    // MARK: - Repeat Workout Button
+    private var repeatWorkoutButton: some View {
+        Button {
+            repeatWorkout()
+        } label: {
+            HStack(spacing: GymTheme.Spacing.sm) {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .font(.system(size: 20))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Repeat This Workout")
+                        .font(GymTheme.Typography.headline)
+                    Text("Start fresh and compare your progress")
+                        .font(GymTheme.Typography.caption)
+                        .opacity(0.8)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .padding(GymTheme.Spacing.md)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "FF6B35"), Color(hex: "FF8C5A")],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
+        }
+    }
+    
+    // MARK: - Repeat Workout Function
+    private func repeatWorkout() {
+        let newWorkout = Workout(
+            name: workout.name,
+            repeatedFromWorkoutId: workout.id
+        )
+        
+        // Copy exercises
+        for (index, exercise) in workout.exercises.sorted(by: { $0.order < $1.order }).enumerated() {
+            let newExercise = Exercise(
+                name: exercise.name,
+                muscleGroup: exercise.muscleGroup,
+                order: index
+            )
+            
+            // Copy sets with previous values for comparison
+            for (setIndex, set) in exercise.sortedSets.enumerated() {
+                let newSet = ExerciseSet(
+                    reps: set.reps,
+                    weight: set.weight,
+                    order: setIndex,
+                    isCompleted: false,
+                    previousWeight: set.weight,  // Store original for comparison
+                    previousReps: set.reps       // Store original for comparison
+                )
+                newExercise.sets.append(newSet)
+                newSet.exercise = newExercise
+            }
+            
+            newWorkout.exercises.append(newExercise)
+            newExercise.workout = newWorkout
+        }
+        
+        modelContext.insert(newWorkout)
+        repeatedWorkout = newWorkout
     }
     
     // MARK: - Header Card
@@ -119,34 +207,47 @@ struct WorkoutDetailView: View {
     
     // MARK: - Stats Row
     private var statsRow: some View {
-        HStack(spacing: GymTheme.Spacing.sm) {
-            DetailStatCard(
-                icon: "clock.fill",
-                value: workout.formattedDuration,
-                label: "Duration",
-                color: .gymPrimary
-            )
+        VStack(spacing: GymTheme.Spacing.sm) {
+            // Duration row
+            HStack(spacing: GymTheme.Spacing.sm) {
+                DetailStatCard(
+                    icon: "clock.fill",
+                    value: workout.formattedDuration,
+                    label: "Total Duration",
+                    color: .gymPrimary
+                )
+                
+                DetailStatCard(
+                    icon: "timer",
+                    value: formatWorkTime(workout.savedWorkTime),
+                    label: "Work Time",
+                    color: .gymWarning
+                )
+            }
             
-            DetailStatCard(
-                icon: "dumbbell.fill",
-                value: "\(workout.exercises.count)",
-                label: "Exercises",
-                color: .gymSecondary
-            )
-            
-            DetailStatCard(
-                icon: "square.stack.fill",
-                value: "\(workout.totalSets)",
-                label: "Sets",
-                color: .gymAccent
-            )
-            
-            DetailStatCard(
-                icon: "scalemass.fill",
-                value: formatVolume(workout.totalVolume),
-                label: "Volume",
-                color: .gymSuccess
-            )
+            // Other stats row
+            HStack(spacing: GymTheme.Spacing.sm) {
+                DetailStatCard(
+                    icon: "dumbbell.fill",
+                    value: "\(workout.exercises.count)",
+                    label: "Exercises",
+                    color: .gymSecondary
+                )
+                
+                DetailStatCard(
+                    icon: "square.stack.fill",
+                    value: "\(workout.totalSets)",
+                    label: "Sets",
+                    color: .gymAccent
+                )
+                
+                DetailStatCard(
+                    icon: "scalemass.fill",
+                    value: formatVolume(workout.totalVolume),
+                    label: "Volume",
+                    color: .gymSuccess
+                )
+            }
         }
     }
     
@@ -194,6 +295,17 @@ struct WorkoutDetailView: View {
             return String(format: "%.1fK", volume / 1000)
         }
         return String(format: "%.0f", volume)
+    }
+    
+    private func formatWorkTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        if minutes >= 60 {
+            let hours = minutes / 60
+            let mins = minutes % 60
+            return String(format: "%d:%02d:%02d", hours, mins, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
     }
     
     private func deleteWorkout() {
@@ -256,7 +368,8 @@ struct ExerciseDetailCard: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.gymTextSecondary)
                         
-                        Text("\(String(format: "%.0f", best.weight)) × \(best.reps)")
+                        // Show weight only if > 0 (bodyweight exercises just show reps)
+                        Text(best.weight > 0 ? "\(String(format: "%.0f", best.weight)) × \(best.reps)" : "\(best.reps) reps")
                             .font(GymTheme.Typography.subheadline)
                             .foregroundColor(.gymPrimary)
                     }
@@ -269,14 +382,16 @@ struct ExerciseDetailCard: View {
                     // Header row
                     HStack {
                         Text("SET")
-                            .frame(width: 40, alignment: .leading)
+                            .frame(width: 35, alignment: .leading)
                         Text("LBS")
-                            .frame(width: 60, alignment: .center)
-                        Text("REPS")
                             .frame(width: 50, alignment: .center)
+                        Text("REPS")
+                            .frame(width: 40, alignment: .center)
+                        Text("TIME")
+                            .frame(width: 45, alignment: .center)
                         Spacer()
                         Text("VOL")
-                            .frame(width: 60, alignment: .trailing)
+                            .frame(width: 50, alignment: .trailing)
                     }
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.gymTextSecondary.opacity(0.7))
@@ -296,21 +411,27 @@ struct ExerciseDetailCard: View {
                                 Text("\(index + 1)")
                                     .foregroundColor(.gymTextSecondary)
                             }
-                            .frame(width: 40, alignment: .leading)
+                            .frame(width: 35, alignment: .leading)
                             
-                            Text(String(format: "%.0f", set.weight))
-                                .foregroundColor(.gymText)
-                                .frame(width: 60, alignment: .center)
+                            // Show weight or "-" for bodyweight exercises
+                            Text(set.weight > 0 ? String(format: "%.0f", set.weight) : "-")
+                                .foregroundColor(set.weight > 0 ? .gymText : .gymTextSecondary.opacity(0.5))
+                                .frame(width: 50, alignment: .center)
                             
                             Text("\(set.reps)")
                                 .foregroundColor(.gymText)
-                                .frame(width: 50, alignment: .center)
+                                .frame(width: 40, alignment: .center)
+                            
+                            // Work time
+                            Text(set.workTime > 0 ? formatSetTime(set.workTime) : "-")
+                                .foregroundColor(set.workTime > 0 ? .gymWarning : .gymTextSecondary.opacity(0.5))
+                                .frame(width: 45, alignment: .center)
                             
                             Spacer()
                             
                             Text(String(format: "%.0f", set.volume))
                                 .foregroundColor(.gymTextSecondary)
-                                .frame(width: 60, alignment: .trailing)
+                                .frame(width: 50, alignment: .trailing)
                         }
                         .font(GymTheme.Typography.subheadline)
                         .padding(.vertical, 4)
@@ -321,6 +442,12 @@ struct ExerciseDetailCard: View {
         .padding(GymTheme.Spacing.md)
         .background(Color.gymSurfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
+    }
+    
+    private func formatSetTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 

@@ -2,21 +2,21 @@ import SwiftUI
 
 struct GymTheme {
     // Main brand colors - Bold, energetic gym aesthetic
-    static let primary = Color("Primary")
-    static let secondary = Color("Secondary")
-    static let accent = Color("Accent")
+    static let primary = Color.gymPrimary
+    static let secondary = Color.gymSecondary
+    static let accent = Color.gymAccent
     
     // Semantic colors
-    static let background = Color("Background")
-    static let surface = Color("Surface")
-    static let surfaceElevated = Color("SurfaceElevated")
-    static let text = Color("Text")
-    static let textSecondary = Color("TextSecondary")
+    static let background = Color.gymBackground
+    static let surface = Color.gymSurface
+    static let surfaceElevated = Color.gymSurfaceElevated
+    static let text = Color.gymText
+    static let textSecondary = Color.gymTextSecondary
     
     // Status colors
-    static let success = Color("Success")
-    static let warning = Color("Warning")
-    static let error = Color("Error")
+    static let success = Color.gymSuccess
+    static let warning = Color.gymWarning
+    static let error = Color.gymError
     
     // Gradients
     static let primaryGradient = LinearGradient(

@@ -4,8 +4,12 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
-    @State private var showingNewWorkout = false
     @State private var activeWorkout: Workout?
+    
+    // Get the current in-progress workout if any
+    private var inProgressWorkout: Workout? {
+        workouts.first(where: { !$0.isCompleted })
+    }
     
     var body: some View {
         NavigationStack {
@@ -23,10 +27,10 @@ struct HomeView: View {
                         quickStatsSection
                         
                         // Active Workout Banner (if exists)
-                        if let active = workouts.first(where: { !$0.isCompleted }) {
+                        if let active = inProgressWorkout {
                             activeWorkoutBanner(active)
                         }
-                        
+
                         // Quick Start Section
                         quickStartSection
                         
@@ -38,9 +42,6 @@ struct HomeView: View {
                 }
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $showingNewWorkout) {
-                WorkoutView(workout: createNewWorkout())
-            }
             .sheet(item: $activeWorkout) { workout in
                 WorkoutView(workout: workout)
             }
@@ -163,22 +164,22 @@ struct HomeView: View {
             SectionHeader(title: "Quick Start")
             
             Button {
-                showingNewWorkout = true
+                startOrResumeWorkout()
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Start Empty Workout")
+                        Text(inProgressWorkout != nil ? "Continue Workout" : "Start New Workout")
                             .font(GymTheme.Typography.headline)
                             .foregroundColor(.gymText)
                         
-                        Text("Begin a new workout from scratch")
+                        Text(inProgressWorkout != nil ? "Resume your current session" : "Begin a new workout from scratch")
                             .font(GymTheme.Typography.caption)
                             .foregroundColor(.gymTextSecondary)
                     }
                     
                     Spacer()
                     
-                    Image(systemName: "plus.circle.fill")
+                    Image(systemName: inProgressWorkout != nil ? "play.circle.fill" : "plus.circle.fill")
                         .font(.system(size: 36))
                         .foregroundStyle(
                             LinearGradient(
@@ -199,6 +200,18 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.large))
             }
             .buttonStyle(.plain)
+        }
+    }
+    
+    private func startOrResumeWorkout() {
+        if let existing = inProgressWorkout {
+            // Resume existing workout
+            activeWorkout = existing
+        } else {
+            // Create and open new workout
+            let workout = Workout(name: "Workout")
+            modelContext.insert(workout)
+            activeWorkout = workout
         }
     }
     
@@ -284,12 +297,6 @@ struct HomeView: View {
             return String(format: "%.1fK", totalVolume / 1000)
         }
         return String(format: "%.0f", totalVolume)
-    }
-    
-    private func createNewWorkout() -> Workout {
-        let workout = Workout(name: "Workout")
-        modelContext.insert(workout)
-        return workout
     }
 }
 
