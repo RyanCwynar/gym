@@ -1,0 +1,25 @@
+{
+  "name": "gym",
+  "version": "1.0.0",
+  "description": "A modern, feature-rich iOS app for logging gym workouts built with SwiftUI and SwiftData. Track your strength training and cardio exercises with precision, analyze your progress, and repeat your favorite workouts.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanCwynar/gym.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RyanCwynar/gym/issues"
+  },
+  "homepage": "https://github.com/RyanCwynar/gym#readme",
+  "dependencies": {
+    "convex": "^1.31.2"
+  }
+}

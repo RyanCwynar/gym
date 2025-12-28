@@ -157,6 +157,18 @@ struct HomeView: View {
         return count
     }
     
+    private func completedReps(_ workout: Workout) -> Int {
+        var count = 0
+        for exercise in workout.exercises {
+            for set in exercise.sets {
+                if set.isCompleted {
+                    count += set.reps
+                }
+            }
+        }
+        return count
+    }
+    
     private func formatTotalTime(_ time: TimeInterval) -> String {
         let hours = Int(time) / 3600
         let minutes = Int(time) / 60 % 60
@@ -198,38 +210,43 @@ struct HomeView: View {
     
     // MARK: - Today's Exercises Section
     private func todaysExercisesSection(_ workout: Workout) -> some View {
-        VStack(alignment: .leading, spacing: GymTheme.Spacing.md) {
+        let completedSetCount = completedSets(workout)
+        let completedRepCount = completedReps(workout)
+        
+        return VStack(alignment: .leading, spacing: GymTheme.Spacing.md) {
             // Summary stats
             HStack(spacing: GymTheme.Spacing.lg) {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Image(systemName: "dumbbell.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 12))
                         .foregroundColor(.gymSecondary)
-                    Text("\(workout.exercises.count) exercises")
+                    Text("\(workout.exercises.count)")
                         .font(GymTheme.Typography.subheadline)
                         .foregroundColor(.gymText)
                 }
+                .fixedSize()
                 
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Image(systemName: "square.stack.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 12))
                         .foregroundColor(.gymAccent)
-                    Text("\(workout.totalSets) sets")
+                    Text("\(completedSetCount)/\(workout.totalSets)")
                         .font(GymTheme.Typography.subheadline)
                         .foregroundColor(.gymText)
                 }
+                .fixedSize()
                 
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Image(systemName: "repeat")
-                        .font(.system(size: 14))
+                        .font(.system(size: 12))
                         .foregroundColor(.gymSuccess)
-                    Text("\(workout.totalReps) reps")
+                    Text("\(completedRepCount)/\(workout.totalReps)")
                         .font(GymTheme.Typography.subheadline)
                         .foregroundColor(.gymText)
                 }
-                
-                Spacer()
+                .fixedSize()
             }
+            .frame(maxWidth: .infinity)
             .padding(GymTheme.Spacing.md)
             .background(Color.gymSurfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: GymTheme.Radius.medium))
