@@ -23,6 +23,12 @@ struct ContentView: View {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
                 .tag(2)
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(3)
         }
         .tint(GymTheme.primary)
     }
@@ -31,5 +37,6 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .modelContainer(for: [Workout.self, Exercise.self, ExerciseSet.self], inMemory: true)
+        .environmentObject(ConvexSyncService.shared)
 }
 

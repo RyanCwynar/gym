@@ -52,3 +52,7 @@ Thumbs.db
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
 
+
+.env.local
+node_modules
+

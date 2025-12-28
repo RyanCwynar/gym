@@ -3,6 +3,9 @@ import SwiftData
 
 @main
 struct GymLogApp: App {
+    @StateObject private var syncService = ConvexSyncService.shared
+    @Environment(\.scenePhase) private var scenePhase
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Workout.self,
@@ -41,6 +44,31 @@ struct GymLogApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(syncService)
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        // Sync when app becomes active
+                        Task {
+                            await syncService.syncIfNeeded(
+                                modelContext: sharedModelContainer.mainContext
+                            )
+                        }
+                    }
+                }
+                .onAppear {
+                    // Validate API key and sync on launch
+                    Task {
+                        // First validate the API key if we have one
+                        if syncService.hasApiKey {
+                            await syncService.validateApiKey()
+                        }
+                        
+                        // Then try to sync
+                        await syncService.syncIfNeeded(
+                            modelContext: sharedModelContainer.mainContext
+                        )
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }
