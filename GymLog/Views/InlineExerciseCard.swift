@@ -6,6 +6,7 @@ struct InlineExerciseCard: View {
     @Bindable var exercise: Exercise
     let onDelete: () -> Void
     
+    @Environment(\.modelContext) private var modelContext
     @State private var isExpanded = true
     @State private var showingDeleteConfirm = false
     @State private var activeSetId: UUID?
@@ -110,7 +111,7 @@ struct InlineExerciseCard: View {
     // MARK: - Strength Content (Sets)
     private var strengthContent: some View {
         VStack(spacing: GymTheme.Spacing.sm) {
-            ForEach(Array(exercise.sets.sorted { $0.order < $1.order }.enumerated()), id: \.element.id) { index, set in
+            ForEach(Array(exercise.sortedSets.enumerated()), id: \.element.id) { index, set in
                 InlineSetRow(
                     set: set,
                     setNumber: index + 1,
@@ -152,7 +153,7 @@ struct InlineExerciseCard: View {
     
     private func addSet() {
         let newOrder = (exercise.sets.map { $0.order }.max() ?? -1) + 1
-        let lastSet = exercise.sets.sorted { $0.order < $1.order }.last
+        let lastSet = exercise.sets.last
         let newSet = ExerciseSet(
             reps: lastSet?.reps ?? 8,
             weight: lastSet?.weight ?? 0,
@@ -171,7 +172,7 @@ struct InlineExerciseCard: View {
         if activeSetId == set.id {
             activeSetId = nil
         }
-        exercise.sets.removeAll { $0.id == set.id }
+        modelContext.delete(set)
     }
     
     private var muscleGroupColor: Color {

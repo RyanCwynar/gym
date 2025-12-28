@@ -25,8 +25,6 @@
 		E91234560016 /* InlineSetRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550016 /* InlineSetRow.swift */; };
 		E91234560017 /* ExercisePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550017 /* ExercisePickerSheet.swift */; };
 		E91234560018 /* DayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550018 /* DayDetailView.swift */; };
-		E91234560019 /* ConvexSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550019 /* ConvexSyncService.swift */; };
-		E91234560020 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550020 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,8 +47,6 @@
 		E91234550016 /* InlineSetRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineSetRow.swift; sourceTree = "<group>"; };
 		E91234550017 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
 		E91234550018 /* DayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayDetailView.swift; sourceTree = "<group>"; };
-		E91234550019 /* ConvexSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexSyncService.swift; sourceTree = "<group>"; };
-		E91234550020 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,7 +113,6 @@
 				E91234550016 /* InlineSetRow.swift */,
 				E91234550017 /* ExercisePickerSheet.swift */,
 				E91234550018 /* DayDetailView.swift */,
-				E91234550020 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -134,7 +129,6 @@
 		E91234520007 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				E91234550019 /* ConvexSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -167,7 +161,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					E91234510001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -225,8 +219,6 @@
 				E91234560016 /* InlineSetRow.swift in Sources */,
 				E91234560017 /* ExercisePickerSheet.swift in Sources */,
 				E91234560018 /* DayDetailView.swift in Sources */,
-				E91234560019 /* ConvexSyncService.swift in Sources */,
-				E91234560020 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,6 +260,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = B89YM4B72X;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -291,6 +284,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -331,6 +325,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = B89YM4B72X;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -347,6 +342,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -359,7 +355,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B89YM4B72X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Gym Log";
@@ -388,7 +383,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B89YM4B72X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Gym Log";

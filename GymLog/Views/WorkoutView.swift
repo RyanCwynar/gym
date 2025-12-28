@@ -528,7 +528,6 @@ struct ExerciseCard: View {
     
     private func deleteSet(_ set: ExerciseSet) {
         exercise.sets.removeAll { $0.id == set.id }
-        modelContext.delete(set)
     }
 }
 
