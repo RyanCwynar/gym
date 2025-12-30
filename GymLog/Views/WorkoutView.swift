@@ -742,12 +742,13 @@ struct CardioExerciseCard: View {
     
     private func saveCardioToConvex() async {
         let workoutId = exercise.workout?.id.uuidString
+        let durationSeconds = Int(exercise.duration) // Convert TimeInterval to Int
         
         do {
             _ = try await ConvexAPI.shared.createSet(
                 exerciseName: exercise.name,
                 exerciseType: .cardio,
-                duration: exercise.duration > 0 ? exercise.duration : nil,
+                duration: durationSeconds > 0 ? durationSeconds : nil,
                 workoutId: workoutId
             )
             print("✅ Cardio saved to Convex: \(exercise.name)")
@@ -1160,6 +1161,7 @@ struct SetRow: View {
         
         // Get workout ID if available (using exercise's workout)
         let workoutId = exercise.workout?.id.uuidString
+        let workTimeSeconds = Int(set.workTime) // Convert TimeInterval to Int
         
         do {
             _ = try await ConvexAPI.shared.createSet(
@@ -1167,7 +1169,7 @@ struct SetRow: View {
                 exerciseType: ConvexAPI.exerciseType(for: exercise.muscleGroup),
                 weight: set.weight > 0 ? set.weight : nil,
                 reps: set.reps > 0 ? set.reps : nil,
-                workTime: set.workTime > 0 ? set.workTime : nil,
+                workTime: workTimeSeconds > 0 ? workTimeSeconds : nil,
                 workoutId: workoutId,
                 setOrder: set.order
             )

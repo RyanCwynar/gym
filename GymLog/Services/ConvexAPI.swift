@@ -189,6 +189,7 @@ class ConvexAPI: ObservableObject {
         }
         
         // Build args dictionary, excluding nil values (Convex v.optional expects absent, not null)
+        // Note: Convert Int to Double for Convex (JavaScript numbers are float64)
         var args: [String: any ConvexEncodable] = [
             "apiKeyId": apiKeyId,
             "exerciseName": exerciseName,
@@ -198,13 +199,13 @@ class ConvexAPI: ObservableObject {
         
         if let exerciseId = exerciseId { args["exerciseId"] = exerciseId }
         if let weight = weight { args["weight"] = weight }
-        if let reps = reps { args["reps"] = reps }
-        if let workTime = workTime { args["workTime"] = workTime }
-        if let duration = duration { args["duration"] = duration }
+        if let reps = reps { args["reps"] = Double(reps) }
+        if let workTime = workTime { args["workTime"] = Double(workTime) }
+        if let duration = duration { args["duration"] = Double(duration) }
         if let notes = notes { args["notes"] = notes }
         if let isCompleted = isCompleted { args["isCompleted"] = isCompleted }
         if let workoutId = workoutId { args["workoutId"] = workoutId }
-        if let setOrder = setOrder { args["setOrder"] = setOrder }
+        if let setOrder = setOrder { args["setOrder"] = Double(setOrder) }
         
         return try await client.mutation("sets:createSet", with: args)
     }
@@ -225,6 +226,7 @@ class ConvexAPI: ObservableObject {
         }
         
         // Build args dictionary, excluding nil values
+        // Note: Convert Int to Double for Convex (JavaScript numbers are float64)
         var args: [String: any ConvexEncodable] = [
             "setId": setId,
             "apiKeyId": apiKeyId
@@ -232,9 +234,9 @@ class ConvexAPI: ObservableObject {
         
         if let weight = weight { args["weight"] = weight }
         if let weightUnit = weightUnit { args["weightUnit"] = weightUnit }
-        if let reps = reps { args["reps"] = reps }
-        if let workTime = workTime { args["workTime"] = workTime }
-        if let duration = duration { args["duration"] = duration }
+        if let reps = reps { args["reps"] = Double(reps) }
+        if let workTime = workTime { args["workTime"] = Double(workTime) }
+        if let duration = duration { args["duration"] = Double(duration) }
         if let notes = notes { args["notes"] = notes }
         if let isCompleted = isCompleted { args["isCompleted"] = isCompleted }
         
