@@ -23,8 +23,18 @@ struct ContentView: View {
                     Label("Stats", systemImage: "chart.bar.fill")
                 }
                 .tag(2)
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(3)
         }
         .tint(GymTheme.primary)
+        .onAppear {
+            // Load API key on app launch
+            ConvexAPI.shared.loadApiKeyId()
+        }
     }
 }
 

@@ -7,8 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		94AC82A12F03E368005CBEFE /* ConvexMobile in Frameworks */ = {isa = PBXBuildFile; productRef = 94AC82A02F03E368005CBEFE /* ConvexMobile */; };
+		94AC82A42F03E80A005CBEFE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC82A22F03E80A005CBEFE /* ContentView.swift */; };
+		94AC82A72F03E876005CBEFE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC82A62F03E876005CBEFE /* SettingsView.swift */; };
+		94AC82AB2F03ED79005CBEFE /* ConvexAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC82AA2F03ED79005CBEFE /* ConvexAPI.swift */; };
 		E91234560001 /* GymLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550001 /* GymLogApp.swift */; };
-		E91234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550002 /* ContentView.swift */; };
 		E91234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E91234550003 /* Assets.xcassets */; };
 		E91234560004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550004 /* Models.swift */; };
 		E91234560005 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234550005 /* HomeView.swift */; };
@@ -28,9 +31,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		94AC82A22F03E80A005CBEFE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		94AC82A62F03E876005CBEFE /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		94AC82AA2F03ED79005CBEFE /* ConvexAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexAPI.swift; sourceTree = "<group>"; };
 		E91234540001 /* GymLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GymLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E91234550001 /* GymLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymLogApp.swift; sourceTree = "<group>"; };
-		E91234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E91234550003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E91234550004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		E91234550005 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -54,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				94AC82A12F03E368005CBEFE /* ConvexMobile in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,8 +77,8 @@
 		E91234520002 /* GymLog */ = {
 			isa = PBXGroup;
 			children = (
+				94AC82A22F03E80A005CBEFE /* ContentView.swift */,
 				E91234550001 /* GymLogApp.swift */,
-				E91234550002 /* ContentView.swift */,
 				E91234520004 /* Models */,
 				E91234520005 /* Views */,
 				E91234520006 /* Theme */,
@@ -102,6 +108,7 @@
 		E91234520005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				94AC82A62F03E876005CBEFE /* SettingsView.swift */,
 				E91234550005 /* HomeView.swift */,
 				E91234550006 /* WorkoutView.swift */,
 				E91234550007 /* HistoryView.swift */,
@@ -129,6 +136,7 @@
 		E91234520007 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				94AC82AA2F03ED79005CBEFE /* ConvexAPI.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -177,6 +185,9 @@
 				Base,
 			);
 			mainGroup = E91234520001;
+			packageReferences = (
+				94AC829F2F03E368005CBEFE /* XCRemoteSwiftPackageReference "convex-swift" */,
+			);
 			productRefGroup = E91234520003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -203,12 +214,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				E91234560001 /* GymLogApp.swift in Sources */,
-				E91234560002 /* ContentView.swift in Sources */,
 				E91234560004 /* Models.swift in Sources */,
 				E91234560005 /* HomeView.swift in Sources */,
+				94AC82AB2F03ED79005CBEFE /* ConvexAPI.swift in Sources */,
+				94AC82A72F03E876005CBEFE /* SettingsView.swift in Sources */,
 				E91234560006 /* WorkoutView.swift in Sources */,
 				E91234560007 /* HistoryView.swift in Sources */,
 				E91234560008 /* ExerciseLibraryView.swift in Sources */,
+				94AC82A42F03E80A005CBEFE /* ContentView.swift in Sources */,
 				E91234560009 /* WorkoutDetailView.swift in Sources */,
 				E91234560010 /* Theme.swift in Sources */,
 				E91234560011 /* Components.swift in Sources */,
@@ -426,6 +439,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		94AC829F2F03E368005CBEFE /* XCRemoteSwiftPackageReference "convex-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/get-convex/convex-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.7.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		94AC82A02F03E368005CBEFE /* ConvexMobile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 94AC829F2F03E368005CBEFE /* XCRemoteSwiftPackageReference "convex-swift" */;
+			productName = ConvexMobile;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E91234500001 /* Project object */;
 }

@@ -166,6 +166,38 @@ struct InlineExerciseCard: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             activeSetId = newSet.id
         }
+        
+        // Save to Convex
+        Task {
+            await saveSetToConvex(newSet)
+        }
+    }
+    
+    private func saveSetToConvex(_ set: ExerciseSet) async {
+        print("🔵 InlineExerciseCard.saveSetToConvex called")
+        print("🔵 API Key ID: \(ConvexAPI.shared.apiKeyId ?? "nil")")
+        
+        guard ConvexAPI.shared.isAuthenticated else {
+            print("❌ Not authenticated - skipping Convex save")
+            return
+        }
+        
+        let workoutId = exercise.workout?.id.uuidString
+        
+        do {
+            print("🔵 Calling createSet mutation...")
+            let result = try await ConvexAPI.shared.createSet(
+                exerciseName: exercise.name,
+                exerciseType: ConvexAPI.exerciseType(for: exercise.muscleGroup),
+                weight: set.weight > 0 ? set.weight : nil,
+                reps: set.reps > 0 ? set.reps : nil,
+                workoutId: workoutId,
+                setOrder: set.order
+            )
+            print("✅ Set saved to Convex: \(exercise.name), ID: \(result)")
+        } catch {
+            print("❌ Error saving set to Convex: \(error)")
+        }
     }
     
     private func deleteSet(_ set: ExerciseSet) {

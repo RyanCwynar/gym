@@ -109,10 +109,38 @@ struct CardioTimerView: View {
             
             // Save duration
             exercise.duration = accumulatedTime
+            
+            // Save to Convex
+            Task {
+                await saveCardioToConvex()
+            }
         } else {
             // Play - start timer
             timerStartTime = Date()
             isRunning = true
+        }
+    }
+    
+    private func saveCardioToConvex() async {
+        guard ConvexAPI.shared.isAuthenticated else {
+            print("❌ Not authenticated - skipping Convex save")
+            return
+        }
+        
+        let workoutId = exercise.workout?.id.uuidString
+        let durationSeconds = Int(exercise.duration) // Convert TimeInterval to Int seconds
+        
+        do {
+            let result = try await ConvexAPI.shared.createSet(
+                exerciseName: exercise.name,
+                exerciseType: .cardio,
+                duration: durationSeconds > 0 ? durationSeconds : nil,
+                isCompleted: exercise.isCompleted ? true : nil,
+                workoutId: workoutId
+            )
+            print("✅ Cardio saved to Convex: \(exercise.name), ID: \(result)")
+        } catch {
+            print("❌ Error saving cardio to Convex: \(error)")
         }
     }
     
@@ -135,6 +163,13 @@ struct CardioTimerView: View {
         }
         
         exercise.isCompleted.toggle()
+        
+        // Save to Convex when completed
+        if exercise.isCompleted {
+            Task {
+                await saveCardioToConvex()
+            }
+        }
     }
     
     private func formatTime(_ time: TimeInterval) -> String {

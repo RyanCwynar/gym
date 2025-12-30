@@ -39,6 +39,9 @@ struct InlineSetRow: View {
             // Set number badge - tap to mark done
             Button {
                 set.isCompleted.toggle()
+                if set.isCompleted {
+                    Task { await saveSetToConvex() }
+                }
             } label: {
                 ZStack {
                     Circle()
@@ -143,6 +146,9 @@ struct InlineSetRow: View {
                 // Mark complete toggle
                 Button {
                     set.isCompleted.toggle()
+                    if set.isCompleted {
+                        Task { await saveSetToConvex() }
+                    }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: set.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -330,9 +336,45 @@ struct InlineSetRow: View {
             // Stop timer - accumulate time
             set.workTime += Date().timeIntervalSince(set.workStartTime!)
             set.workStartTime = nil
+            
+            // Save to Convex when timer stops
+            Task {
+                await saveSetToConvex()
+            }
         } else {
             // Start timer
             set.workStartTime = Date()
+        }
+    }
+    
+    private func saveSetToConvex() async {
+        guard let exercise = set.exercise else {
+            print("❌ No exercise found for set")
+            return
+        }
+        
+        guard ConvexAPI.shared.isAuthenticated else {
+            print("❌ Not authenticated - skipping Convex save")
+            return
+        }
+        
+        let workoutId = exercise.workout?.id.uuidString
+        
+        let workTimeSeconds = Int(set.workTime) // Convert TimeInterval to Int seconds
+        
+        do {
+            let result = try await ConvexAPI.shared.createSet(
+                exerciseName: exercise.name,
+                exerciseType: ConvexAPI.exerciseType(for: exercise.muscleGroup),
+                weight: set.weight > 0 ? set.weight : nil,
+                reps: set.reps > 0 ? set.reps : nil,
+                workTime: workTimeSeconds > 0 ? workTimeSeconds : nil,
+                workoutId: workoutId,
+                setOrder: set.order
+            )
+            print("✅ Set saved to Convex: \(exercise.name), ID: \(result)")
+        } catch {
+            print("❌ Error saving set to Convex: \(error)")
         }
     }
     
